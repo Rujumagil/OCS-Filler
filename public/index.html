@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#173B2C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="OCS Almacén">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles.css">
+  <title>OCS · Almacén Filler</title>
+</head>
+<body>
+  <section id="loginView" class="login-view">
+    <div class="login-card">
+      <div class="brand-lockup">
+        <div class="brand-mark">OCS</div>
+        <div>
+          <strong>Operadora de Comedores Saludables</strong>
+          <span>Cafetería Filler · Almacén</span>
+        </div>
+      </div>
+      <div class="login-copy">
+        <span class="eyebrow">Acceso interno</span>
+        <h1>Control de almacén</h1>
+        <p>Entradas, salidas, mermas y conteos físicos desde el teléfono.</p>
+      </div>
+      <form id="loginForm" class="login-form">
+        <label>
+          <span>Tu nombre</span>
+          <input id="nameInput" autocomplete="name" placeholder="Ej. Juan Pérez">
+        </label>
+        <label>
+          <span>PIN de almacén</span>
+          <input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
+        </label>
+        <button type="submit" class="btn btn-primary btn-large">Entrar</button>
+        <div id="loginError" class="form-error"></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="appView" class="app-view hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-lockup compact">
+          <div class="brand-mark">OCS</div>
+          <div>
+            <strong>Almacén Filler</strong>
+            <span id="userName">—</span>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="refreshBtn" class="icon-btn" aria-label="Actualizar">↻</button>
+          <button id="logoutBtn" class="icon-btn" aria-label="Salir">⎋</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section id="homeView">
+        <div class="hero-row">
+          <div>
+            <span class="eyebrow">Inventario operativo</span>
+            <h1>¿Qué vas a mover?</h1>
+          </div>
+          <small id="updatedAt" class="updated-at">—</small>
+        </div>
+
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input id="searchInput" class="search-input" autocomplete="off" placeholder="Buscar por producto o código">
+          <button id="clearSearch" class="clear-search hidden" aria-label="Limpiar">×</button>
+        </div>
+
+        <section class="kpi-grid">
+          <button id="kpiProducts" class="kpi-card">
+            <span>Productos</span>
+            <strong id="productsCount">0</strong>
+          </button>
+          <button id="kpiOrder" class="kpi-card warning">
+            <span>Por pedir</span>
+            <strong id="orderCount">0</strong>
+          </button>
+          <button id="kpiZero" class="kpi-card danger">
+            <span>Sin existencia</span>
+            <strong id="zeroCount">0</strong>
+          </button>
+        </section>
+
+        <div class="section-head">
+          <div>
+            <h2 id="listTitle">Inventario</h2>
+            <p id="listSubtitle">Toca un producto para registrar un movimiento.</p>
+          </div>
+          <button id="showAllBtn" class="text-btn hidden">Ver todos</button>
+        </div>
+
+        <div id="productList" class="product-list"></div>
+      </section>
+
+      <section id="historyView" class="hidden">
+        <div class="section-head history-title">
+          <div>
+            <span class="eyebrow">Trazabilidad</span>
+            <h2>Movimientos recientes</h2>
+            <p>Entradas, salidas, mermas y ajustes de inventario.</p>
+          </div>
+          <button id="reloadHistoryBtn" class="icon-btn light">↻</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button data-nav="home" class="active"><span>⌂</span><b>Inicio</b></button>
+      <button data-nav="entry"><span>＋</span><b>Entrada</b></button>
+      <button data-nav="exit"><span>−</span><b>Salida</b></button>
+      <button data-nav="count"><span>✓</span><b>Conteo</b></button>
+      <button data-nav="history"><span>≡</span><b>Historial</b></button>
+    </nav>
+  </section>
+
+  <div id="productSheet" class="sheet-backdrop">
+    <section class="sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Producto</span>
+          <h3 id="productName">—</h3>
+          <p id="productCode">—</p>
+        </div>
+        <button class="close-btn" data-close="productSheet">×</button>
+      </header>
+
+      <div class="stock-card">
+        <div>
+          <span>Existencia actual</span>
+          <strong id="productStock">0</strong>
+        </div>
+        <div class="stock-meta">
+          <span id="productMin">Mínimo —</span>
+          <span id="productMax">Máximo —</span>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <button data-action="entry" class="action-card entry"><span>＋</span><b>Entrada</b><small>Recibir producto</small></button>
+        <button data-action="exit" class="action-card exit"><span>−</span><b>Salida</b><small>Surtir producto</small></button>
+        <button data-action="count" class="action-card count"><span>✓</span><b>Conteo</b><small>Ajustar existencia</small></button>
+        <button data-action="waste" class="action-card waste"><span>!</span><b>Merma</b><small>Registrar pérdida</small></button>
+      </div>
+    </section>
+  </div>
+
+  <div id="movementSheet" class="sheet-backdrop">
+    <section class="sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span id="movementEyebrow" class="eyebrow">Movimiento</span>
+          <h3 id="movementTitle">—</h3>
+          <p id="movementProduct">—</p>
+        </div>
+        <button class="close-btn" data-close="movementSheet">×</button>
+      </header>
+
+      <form id="movementForm" class="movement-form">
+        <div class="current-stock-line">
+          <span>Existencia en sistema</span>
+          <strong id="systemStock">0</strong>
+        </div>
+
+        <label class="quantity-field">
+          <span id="quantityLabel">Cantidad</span>
+          <div class="quantity-box">
+            <input id="quantityInput" inputmode="decimal" placeholder="0">
+            <b id="quantityUnit">pza</b>
+          </div>
+        </label>
+
+        <div id="countPreview" class="count-preview hidden"></div>
+
+        <label>
+          <span>Nota <small>opcional</small></span>
+          <textarea id="notesInput" placeholder="Ej. surtido a cocina, devolución, producto dañado…"></textarea>
+        </label>
+
+        <button id="saveMovementBtn" type="submit" class="btn btn-primary btn-large">Registrar</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
