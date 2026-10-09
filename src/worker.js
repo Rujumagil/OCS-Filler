@@ -354,7 +354,16 @@ async function readJson(request) {
 
 async function handleApi(request, env, url) {
   if (url.pathname === "/api/health") {
-    return json({ ok: true, service: "ocs-filler-almacen" });
+    return json({
+      ok: true,
+      service: "ocs-filler-almacen",
+      runtimeConfigured: Boolean(
+        env.WAREHOUSE_PIN &&
+        env.SESSION_SECRET &&
+        env.GOOGLE_CLIENT_EMAIL &&
+        env.GOOGLE_PRIVATE_KEY
+      )
+    });
   }
 
   if (url.pathname === "/api/login" && request.method === "POST") {
