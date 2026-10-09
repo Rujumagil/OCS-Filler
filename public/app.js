@@ -7,6 +7,7 @@ const state={
   items:[],
   stats:{},
   history:[],
+  delivery:null,
   selected:null,
   pendingMode:null,
   filter:"all"
@@ -99,7 +100,53 @@ async function loadInventory(){
     $("zeroCount").textContent=state.stats.zero||0;
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
     renderProducts();
+    loadTodayDelivery();
   }catch(e){toast(e.message);}
+}
+
+async function loadTodayDelivery(){
+  try{
+    const data=await api("/api/delivery/today");
+    state.delivery=data.delivery||null;
+    renderTodayDelivery();
+  }catch(e){
+    $("todayDeliverySummary").textContent="No se pudo consultar la entrega del día.";
+  }
+}
+
+function renderTodayDelivery(){
+  const d=state.delivery;
+  if(!d||!d.lines){
+    $("todayDeliverySummary").textContent="Sin entregas registradas hoy.";
+    $("deliveryLines").textContent="0";
+    $("deliveryPieces").textContent="0";
+    $("deliveryKg").textContent="0";
+    $("deliverySource").classList.add("hidden");
+    $("deliveryList").innerHTML='<div class="empty-state">Todavía no hay entradas registradas para hoy.</div>';
+    return;
+  }
+
+  $("todayDeliverySummary").textContent=d.lines+" partidas · "+num(d.pieces)+" pza · "+num(d.kg)+" kg";
+  $("deliveryLines").textContent=d.lines;
+  $("deliveryPieces").textContent=num(d.pieces);
+  $("deliveryKg").textContent=num(d.kg);
+
+  const parts=String(d.date||"").split("-");
+  $("deliveryDateLabel").textContent=parts.length===3?parts[2]+"/"+parts[1]+"/"+parts[0]:"Hoy";
+
+  const sources=(d.sources||[]).filter(Boolean);
+  $("deliverySource").classList.toggle("hidden",!sources.length);
+  $("deliverySource").textContent=sources.length?sources.join(" · "):"";
+
+  $("deliveryList").innerHTML=(d.items||[]).length?(d.items||[]).map(i=>`
+    <article class="delivery-item">
+      <div>
+        <b>${esc(i.name||i.code)}</b>
+        <small>${esc(i.code)} · ${esc(i.family||"")}</small>
+      </div>
+      <strong>+${num(i.quantity)} ${unit(i.unit)}</strong>
+    </article>
+  `).join(""):'<div class="empty-state">Sin productos recibidos.</div>';
 }
 
 function filteredItems(){
@@ -227,6 +274,7 @@ $("kpiProducts").addEventListener("click",()=>{$("searchInput").value="";state.f
 $("kpiOrder").addEventListener("click",()=>{$("searchInput").value="";state.filter="order";renderProducts();});
 $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filter="zero";renderProducts();});
 $("refreshBtn").addEventListener("click",loadInventory);
+$("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
 $("logoutBtn").addEventListener("click",logout);
 $("reloadHistoryBtn").addEventListener("click",loadHistory);
 
