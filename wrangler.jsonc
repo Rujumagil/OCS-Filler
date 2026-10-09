@@ -3,6 +3,18 @@
   "name": "ocs-filler",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-09",
+  "keep_vars": true,
+  "vars": {
+    "GOOGLE_SHEET_ID": "1eEOZqf5PjoY9QRqDaXmPN3OGPzmUpPUgQ7eSYHdTHyI"
+  },
+  "secrets": {
+    "required": [
+      "WAREHOUSE_PIN",
+      "SESSION_SECRET",
+      "GOOGLE_CLIENT_EMAIL",
+      "GOOGLE_PRIVATE_KEY"
+    ]
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
