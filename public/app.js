@@ -44,6 +44,7 @@ async function api(path,options={}){
   if(!response.ok||data.ok===false){
     const messages={
       invalid_pin:"PIN incorrecto.",
+      pin_not_configured:"El PIN no está configurado en el entorno de producción de Cloudflare.",
       name_required:"Escribe tu nombre.",
       unauthorized:"Sesión vencida.",
       google_credentials_missing:"Falta conectar Google Sheets en Cloudflare.",
