@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ocs-filler-almacen",
+  "name": "ocs-filler",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-09",
   "assets": {
