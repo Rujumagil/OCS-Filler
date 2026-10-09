@@ -236,6 +236,51 @@ function mxDateTime() {
   return map.day + "/" + map.month + "/" + map.year + " " + map.hour + ":" + map.minute + ":" + map.second;
 }
 
+function mxDateKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+  return p.year + "-" + p.month + "-" + p.day;
+}
+
+function sheetDateKey(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(Date.UTC(1899, 11, 30) + Math.round(value * 86400000)).toISOString().slice(0, 10);
+  }
+  const s = String(value || "").trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
+}
+
+async function loadTodayDelivery(env) {
+  const rows = await getRange(env, "Surtido Almacén!A21:M2020");
+  const today = mxDateKey();
+  const items = rows.map(r => ({
+    date:r[0]||"", code:String(r[1]||""), name:String(r[2]||""), family:String(r[3]||""),
+    unit:String(r[4]||""), type:String(r[6]||""), quantity:number(r[7]),
+    source:String(r[8]||""), responsible:String(r[9]||""), folio:String(r[10]||"")
+  })).filter(x => x.code && x.quantity > 0 && x.type === "Entrada" && sheetDateKey(x.date) === today);
+
+  let pieces = 0, kg = 0;
+  for (const x of items) {
+    const u = x.unit.trim().toLowerCase();
+    if (["pieza","pza","pz"].includes(u)) pieces += x.quantity;
+    else if (["kg","kgr"].includes(u)) kg += x.quantity;
+  }
+
+  return {
+    date: today,
+    lines: items.length,
+    pieces: Number(pieces.toFixed(3)),
+    kg: Number(kg.toFixed(3)),
+    sources: [...new Set(items.map(x => x.source).filter(Boolean))],
+    items
+  };
+}
+
 function folio(prefix) {
   const d = new Date();
   const stamp = d.toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
@@ -391,6 +436,10 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/history" && request.method === "GET") {
     return json({ ok: true, movements: await loadHistory(env) });
+  }
+
+  if (url.pathname === "/api/delivery/today" && request.method === "GET") {
+    return json({ ok: true, delivery: await loadTodayDelivery(env) });
   }
 
   if (url.pathname === "/api/movement" && request.method === "POST") {
