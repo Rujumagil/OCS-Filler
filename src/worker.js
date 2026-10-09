@@ -362,7 +362,10 @@ async function handleApi(request, env, url) {
     const name = String(body.name || "").trim().slice(0, 80);
     const pin = String(body.pin || "").trim();
     if (!name) return json({ ok: false, error: "name_required" }, 400);
-    if (!env.WAREHOUSE_PIN || pin !== String(env.WAREHOUSE_PIN)) {
+    if (!env.WAREHOUSE_PIN) {
+      return json({ ok: false, error: "pin_not_configured" }, 500);
+    }
+    if (pin !== String(env.WAREHOUSE_PIN).trim()) {
       return json({ ok: false, error: "invalid_pin" }, 401);
     }
     if (!env.SESSION_SECRET) return json({ ok: false, error: "session_secret_missing" }, 500);
