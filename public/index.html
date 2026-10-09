@@ -88,6 +88,16 @@
           </button>
         </section>
 
+        <button id="todayDeliveryCard" class="delivery-card">
+          <div class="delivery-icon">↓</div>
+          <div class="delivery-copy">
+            <span class="eyebrow">Recepción del día</span>
+            <strong>Entrega de hoy</strong>
+            <p id="todayDeliverySummary">Consultando entradas…</p>
+          </div>
+          <div class="delivery-arrow">›</div>
+        </button>
+
         <div class="section-head">
           <div>
             <h2 id="listTitle">Inventario</h2>
@@ -188,6 +198,36 @@
 
         <button id="saveMovementBtn" type="submit" class="btn btn-primary btn-large">Registrar</button>
       </form>
+    </section>
+  </div>
+
+  <div id="deliverySheet" class="sheet-backdrop">
+    <section class="sheet delivery-sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Recepción</span>
+          <h3>Entrega de hoy</h3>
+          <p id="deliveryDateLabel">—</p>
+        </div>
+        <button class="close-btn" data-close="deliverySheet">×</button>
+      </header>
+
+      <div class="delivery-stats">
+        <div><span>Partidas</span><strong id="deliveryLines">0</strong></div>
+        <div><span>Piezas</span><strong id="deliveryPieces">0</strong></div>
+        <div><span>Kilogramos</span><strong id="deliveryKg">0</strong></div>
+      </div>
+
+      <div id="deliverySource" class="delivery-source hidden"></div>
+
+      <div class="section-head delivery-list-head">
+        <div>
+          <h2>Productos recibidos</h2>
+          <p>Cantidades registradas en el almacén.</p>
+        </div>
+      </div>
+      <div id="deliveryList" class="delivery-list"></div>
     </section>
   </div>
 
