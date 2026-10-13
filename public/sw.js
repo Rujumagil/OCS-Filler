@@ -1,4 +1,4 @@
-const CACHE="ocs-filler-almacen-v9";
+const CACHE="ocs-filler-almacen-v10";
 const ASSETS=["/","/index.html","/styles.css","/app.js","/manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
