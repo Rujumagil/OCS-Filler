@@ -24,7 +24,9 @@ const state={
   scanSessionId:"",
   scanSessionMode:null,
   scanSessionCount:0,
-  scanSessionLabel:""
+  scanSessionLabel:"",
+  qrLabelSelected:new Set(),
+  qrCodeModule:null
 };
 
 const $=id=>document.getElementById(id);
@@ -439,6 +441,137 @@ async function linkBarcodeToProduct(code){
   }
 }
 
+function isWeightItem(item){
+  const u=String(item.unit||"").toLowerCase();
+  return ["kg","g","m"].includes(u)||/\bGRANEL\b|\bKG\b/i.test(item.name||"");
+}
+
+function isSuggestedQrItem(item){
+  return item.family==="Frutas y verduras"||
+    item.family==="Productos especiales"||
+    isWeightItem(item);
+}
+
+function qrLabelVisibleItems(){
+  const filter=$("qrLabelFilter").value;
+  const q=$("qrLabelSearch").value.trim().toLowerCase();
+  let rows=[...state.items];
+
+  if(filter==="suggested")rows=rows.filter(isSuggestedQrItem);
+  if(filter==="produce")rows=rows.filter(i=>i.family==="Frutas y verduras");
+  if(filter==="weight")rows=rows.filter(isWeightItem);
+  if(filter==="special")rows=rows.filter(i=>i.family==="Productos especiales");
+
+  if(q)rows=rows.filter(i=>
+    i.name.toLowerCase().includes(q)||
+    i.code.toLowerCase().includes(q)||
+    String(i.family||"").toLowerCase().includes(q)
+  );
+
+  return rows;
+}
+
+function updateQrSelectionCount(){
+  const n=state.qrLabelSelected.size;
+  $("qrLabelSelectionCount").textContent=n+" "+(n===1?"seleccionada":"seleccionadas");
+  $("printQrLabelsBtn").textContent=n
+    ? "Generar e imprimir "+n+" "+(n===1?"etiqueta":"etiquetas")
+    : "Generar e imprimir etiquetas";
+}
+
+function renderQrLabelList(){
+  const rows=qrLabelVisibleItems();
+  $("qrLabelList").innerHTML=rows.length?rows.map(i=>`
+    <label class="qr-label-row">
+      <input type="checkbox" data-qr-code="${esc(i.code)}" ${state.qrLabelSelected.has(i.code)?"checked":""}>
+      <div>
+        <b>${esc(i.name)}</b>
+        <small>${esc(i.code)} · ${esc(i.family||"")} · ${unit(i.unit)}</small>
+      </div>
+      <span>QR OCS</span>
+    </label>
+  `).join(""):'<div class="empty-state">No hay productos con ese criterio.</div>';
+
+  document.querySelectorAll("[data-qr-code]").forEach(input=>input.addEventListener("change",()=>{
+    if(input.checked)state.qrLabelSelected.add(input.dataset.qrCode);
+    else state.qrLabelSelected.delete(input.dataset.qrCode);
+    updateQrSelectionCount();
+  }));
+  updateQrSelectionCount();
+}
+
+function openQrLabels(){
+  if(!state.qrLabelSelected.size){
+    state.items.filter(isSuggestedQrItem).forEach(i=>state.qrLabelSelected.add(i.code));
+  }
+  $("qrLabelFilter").value="suggested";
+  $("qrLabelSearch").value="";
+  renderQrLabelList();
+  openSheet("qrLabelsSheet");
+}
+
+async function qrCodeApi(){
+  if(state.qrCodeModule)return state.qrCodeModule;
+  const mod=await import("https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm");
+  state.qrCodeModule=mod.default||mod;
+  return state.qrCodeModule;
+}
+
+async function printQrLabels(){
+  const selected=state.items.filter(i=>state.qrLabelSelected.has(i.code));
+  if(!selected.length){
+    toast("Selecciona al menos una etiqueta.");
+    return;
+  }
+
+  const btn=$("printQrLabelsBtn");
+  const previous=btn.textContent;
+  btn.disabled=true;
+  btn.textContent="Generando QR…";
+
+  try{
+    const QRCode=await qrCodeApi();
+    const labels=[];
+    for(const item of selected){
+      const dataUrl=await QRCode.toDataURL(item.code,{
+        errorCorrectionLevel:"M",
+        margin:1,
+        width:256
+      });
+      labels.push(`
+        <article class="print-label-card">
+          <div class="print-label-copy">
+            <div class="print-brand">OCS · ALMACÉN FILLER</div>
+            <h2>${esc(item.name)}</h2>
+            <p>${esc(item.family||"Producto")} · ${unit(item.unit)}</p>
+            <strong>${esc(item.code)}</strong>
+          </div>
+          <img src="${dataUrl}" alt="QR ${esc(item.code)}">
+        </article>
+      `);
+    }
+
+    $("labelPrintArea").innerHTML=labels.join("");
+    document.body.classList.add("printing-labels");
+    $("labelPrintArea").setAttribute("aria-hidden","false");
+
+    const cleanup=()=>{
+      document.body.classList.remove("printing-labels");
+      $("labelPrintArea").setAttribute("aria-hidden","true");
+      window.removeEventListener("afterprint",cleanup);
+    };
+    window.addEventListener("afterprint",cleanup);
+    setTimeout(()=>window.print(),120);
+  }catch(e){
+    console.error("QR label error",e);
+    toast("No pudimos generar las etiquetas QR. Intenta nuevamente con conexión a internet.");
+  }finally{
+    btn.disabled=false;
+    btn.textContent=previous;
+    updateQrSelectionCount();
+  }
+}
+
 function filteredItems(){
   const q=$("searchInput").value.trim().toLowerCase();
   let rows=[...state.items];
@@ -571,6 +704,18 @@ $("kpiOrder").addEventListener("click",()=>{$("searchInput").value="";state.filt
 $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filter="zero";renderProducts();});
 $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
+$("qrLabelsCard").addEventListener("click",openQrLabels);
+$("qrLabelFilter").addEventListener("change",renderQrLabelList);
+$("qrLabelSearch").addEventListener("input",renderQrLabelList);
+$("selectVisibleLabelsBtn").addEventListener("click",()=>{
+  qrLabelVisibleItems().forEach(i=>state.qrLabelSelected.add(i.code));
+  renderQrLabelList();
+});
+$("clearLabelSelectionBtn").addEventListener("click",()=>{
+  state.qrLabelSelected.clear();
+  renderQrLabelList();
+});
+$("printQrLabelsBtn").addEventListener("click",printQrLabels);
 $("scanMovementBtn").addEventListener("click",()=>openScanner(null));
 $("restartScannerBtn").addEventListener("click",startScanner);
 $("manualBarcodeBtn").addEventListener("click",()=>handleBarcode($("manualBarcodeInput").value));
