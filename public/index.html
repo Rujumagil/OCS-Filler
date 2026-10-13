@@ -68,9 +68,12 @@
         </div>
 
         <div class="search-wrap">
-          <span class="search-icon">⌕</span>
-          <input id="searchInput" class="search-input" autocomplete="off" placeholder="Buscar por producto o código">
-          <button id="clearSearch" class="clear-search hidden" aria-label="Limpiar">×</button>
+          <div class="search-field">
+            <span class="search-icon">⌕</span>
+            <input id="searchInput" class="search-input" autocomplete="off" placeholder="Buscar por producto o código">
+            <button id="clearSearch" class="clear-search hidden" aria-label="Limpiar">×</button>
+          </div>
+          <button id="scanQuickBtn" class="scan-quick" aria-label="Escanear código de barras"><span>▣</span><b>Escanear</b></button>
         </div>
 
         <section class="kpi-grid">
@@ -130,6 +133,45 @@
       <button data-nav="history"><span>≡</span><b>Historial</b></button>
     </nav>
   </section>
+
+  <div id="scannerSheet" class="sheet-backdrop">
+    <section class="sheet scanner-sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Escáner</span>
+          <h3 id="scannerTitle">Escanear producto</h3>
+          <p id="scannerSubtitle">Apunta la cámara al código de barras o QR.</p>
+        </div>
+        <button id="scannerCloseBtn" class="close-btn" type="button">×</button>
+      </header>
+
+      <div class="scanner-stage">
+        <video id="scannerVideo" playsinline muted></video>
+        <div class="scanner-frame"><span></span></div>
+      </div>
+
+      <div id="scannerStatus" class="scanner-status">Preparando cámara…</div>
+
+      <button id="restartScannerBtn" type="button" class="btn btn-primary btn-large scanner-restart hidden">Activar cámara</button>
+
+      <div class="manual-barcode">
+        <span>También puedes escribir o usar un lector Bluetooth/USB</span>
+        <div>
+          <input id="manualBarcodeInput" inputmode="numeric" autocomplete="off" placeholder="Código de barras">
+          <button id="manualBarcodeBtn" type="button" class="btn btn-primary">Buscar</button>
+        </div>
+      </div>
+
+      <section id="barcodeLinkPanel" class="barcode-link-panel hidden">
+        <span class="eyebrow">Código nuevo</span>
+        <h4 id="unknownBarcode">—</h4>
+        <p>Este código aún no está vinculado. Busca el producto una sola vez y quedará aprendido.</p>
+        <input id="linkProductSearch" autocomplete="off" placeholder="Buscar producto por nombre o código">
+        <div id="linkProductResults" class="link-results"></div>
+      </section>
+    </section>
+  </div>
 
   <div id="productSheet" class="sheet-backdrop">
     <section class="sheet">
