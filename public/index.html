@@ -120,6 +120,16 @@
           <div class="qr-labels-arrow">›</div>
         </button>
 
+        <button id="warehouseMapCard" class="warehouse-map-card" type="button">
+          <div class="warehouse-map-icon">⌖</div>
+          <div class="warehouse-map-copy">
+            <span class="eyebrow">Organización física</span>
+            <strong>Mapa de ubicaciones</strong>
+            <p id="warehouseMapSummary">Organiza productos por zona, mueble y nivel.</p>
+          </div>
+          <div class="warehouse-map-arrow">›</div>
+        </button>
+
         <div class="section-head">
           <div>
             <h2 id="listTitle">Inventario</h2>
@@ -205,6 +215,28 @@
     </section>
   </div>
 
+  <div id="warehouseMapSheet" class="sheet-backdrop">
+    <section class="sheet warehouse-map-sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Mapa operativo</span>
+          <h3>Ubicaciones del almacén</h3>
+          <p>Vista por zonas. No representa distancias físicas; organiza el inventario por código de ubicación.</p>
+        </div>
+        <button class="close-btn" data-close="warehouseMapSheet">×</button>
+      </header>
+
+      <div class="warehouse-map-stats">
+        <div><span>Ubicados</span><strong id="locatedProductsCount">0</strong></div>
+        <div><span>Sin ubicación</span><strong id="unlocatedProductsCount">0</strong></div>
+        <div><span>Zonas activas</span><strong id="activeZonesCount">0</strong></div>
+      </div>
+
+      <div id="warehouseZoneList" class="warehouse-zone-list"></div>
+    </section>
+  </div>
+
   <div id="qrLabelsSheet" class="sheet-backdrop">
     <section class="sheet qr-labels-sheet">
       <div class="sheet-handle"></div>
@@ -273,7 +305,32 @@
           <button id="editLocationBtn" type="button" class="text-btn">Editar</button>
         </div>
         <div id="locationEditor" class="location-editor hidden">
-          <input id="locationInput" autocomplete="off" placeholder="Ej. Anaquel A2, Refrigerador 1, Frutas">
+          <div class="location-structure">
+            <label>
+              <span>Zona</span>
+              <select id="locationZone">
+                <option value="">Seleccionar zona</option>
+                <option value="SECO">SECO · Bodega seca</option>
+                <option value="REF">REF · Refrigeración</option>
+                <option value="CONG">CONG · Congelación</option>
+                <option value="FRUT">FRUT · Frutas y verduras</option>
+                <option value="LIMP">LIMP · Limpieza</option>
+                <option value="DESE">DESE · Desechables</option>
+                <option value="ESP">ESP · Especiales / proteínas</option>
+                <option value="OTRO">OTRO · Otra zona</option>
+              </select>
+            </label>
+            <label>
+              <span>Mueble / anaquel</span>
+              <input id="locationRack" autocomplete="off" maxlength="8" placeholder="Ej. A, 01, R2">
+            </label>
+            <label>
+              <span>Nivel</span>
+              <input id="locationLevel" inputmode="numeric" maxlength="2" placeholder="01">
+            </label>
+          </div>
+          <div id="locationPreview" class="location-preview">Selecciona zona, mueble y nivel.</div>
+          <input id="locationInput" class="hidden" autocomplete="off">
           <div>
             <button id="saveLocationBtn" type="button" class="btn btn-primary">Guardar ubicación</button>
             <button id="cancelLocationBtn" type="button" class="text-btn">Cancelar</button>
