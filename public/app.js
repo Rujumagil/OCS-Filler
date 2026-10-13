@@ -34,6 +34,70 @@ const num=v=>Number(v||0).toLocaleString("es-MX",{maximumFractionDigits:3});
 const unit=v=>({pieza:"pza",pza:"pza",kg:"kg",g:"g",L:"L",l:"L",ml:"ml",m:"m"}[v]||v||"u");
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+const LOCATION_ZONES={
+  SECO:"Bodega seca",
+  REF:"Refrigeración",
+  CONG:"Congelación",
+  FRUT:"Frutas y verduras",
+  LIMP:"Limpieza",
+  DESE:"Desechables",
+  ESP:"Especiales / proteínas",
+  OTRO:"Otra zona"
+};
+
+function parseLocation(value){
+  const text=String(value||"").trim().toUpperCase();
+  const m=text.match(/^([A-Z0-9]{2,6})-([A-Z0-9]{1,8})-(\d{2})$/);
+  if(!m)return null;
+  return {code:text,zone:m[1],rack:m[2],level:m[3]};
+}
+
+function locationLabel(value){
+  const p=parseLocation(value);
+  if(!p)return String(value||"").trim()||"Sin ubicación";
+  return p.code+" · "+(LOCATION_ZONES[p.zone]||p.zone);
+}
+
+function normalizedRack(value){
+  return String(value||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
+}
+
+function buildLocationCode(){
+  const zone=$("locationZone").value.trim().toUpperCase();
+  const rack=normalizedRack($("locationRack").value);
+  const digits=String($("locationLevel").value||"").replace(/\D/g,"").slice(0,2);
+  const level=digits?String(Math.max(1,Math.min(99,Number(digits)))).padStart(2,"0"):"";
+  if(zone&&rack&&level)return zone+"-"+rack+"-"+level;
+  return "";
+}
+
+function updateLocationPreview(){
+  $("locationRack").value=normalizedRack($("locationRack").value);
+  const code=buildLocationCode();
+  $("locationInput").value=code;
+  if(code){
+    const p=parseLocation(code);
+    $("locationPreview").textContent=code+" · "+(LOCATION_ZONES[p.zone]||p.zone);
+  }else{
+    $("locationPreview").textContent="Completa zona, mueble y nivel. Ejemplo: SECO-A-02";
+  }
+}
+
+function prepareLocationEditor(value){
+  const p=parseLocation(value);
+  $("locationZone").value=p?.zone||"";
+  $("locationRack").value=p?.rack||"";
+  $("locationLevel").value=p?.level||"";
+  $("locationInput").value=p?.code||"";
+  if(p){
+    $("locationPreview").textContent=p.code+" · "+(LOCATION_ZONES[p.zone]||p.zone);
+  }else if(value){
+    $("locationPreview").textContent="Ubicación anterior: "+value+". Asigna el nuevo formato Zona-Mueble-Nivel.";
+  }else{
+    $("locationPreview").textContent="Completa zona, mueble y nivel. Ejemplo: SECO-A-02";
+  }
+}
+
 function toast(message){
   const el=$("toast");
   el.textContent=message;
@@ -124,6 +188,7 @@ async function loadInventory(){
     $("zeroCount").textContent=state.stats.zero||0;
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
     renderProducts();
+    updateWarehouseMapSummary();
     loadTodayDelivery();
   }catch(e){toast(e.message);}
 }
@@ -442,6 +507,94 @@ async function linkBarcodeToProduct(code){
   }
 }
 
+function locatedItems(){
+  return state.items.filter(i=>parseLocation(i.location));
+}
+
+function updateWarehouseMapSummary(){
+  const located=locatedItems().length;
+  const pending=Math.max(0,state.items.length-located);
+  $("warehouseMapSummary").textContent=located+" ubicados · "+pending+" pendientes por asignar";
+}
+
+function renderWarehouseMap(){
+  const valid=locatedItems();
+  const unlocated=state.items.filter(i=>!parseLocation(i.location));
+  const groups=new Map();
+
+  for(const item of valid){
+    const p=parseLocation(item.location);
+    if(!groups.has(p.zone))groups.set(p.zone,new Map());
+    const racks=groups.get(p.zone);
+    if(!racks.has(p.rack))racks.set(p.rack,{items:0,levels:new Set()});
+    const rack=racks.get(p.rack);
+    rack.items+=1;
+    rack.levels.add(p.level);
+  }
+
+  $("locatedProductsCount").textContent=valid.length;
+  $("unlocatedProductsCount").textContent=unlocated.length;
+  $("activeZonesCount").textContent=groups.size;
+
+  const ordered=Object.keys(LOCATION_ZONES).filter(z=>groups.has(z));
+  const cards=ordered.map(zone=>{
+    const racks=groups.get(zone);
+    let zoneItems=0;
+    const chips=[...racks.entries()].sort((a,b)=>a[0].localeCompare(b[0],"es")).map(([rack,data])=>{
+      zoneItems+=data.items;
+      const levels=[...data.levels].sort().join(", ");
+      return `<span class="warehouse-rack-chip">${esc(rack)} · ${data.items} prod. · Niv. ${esc(levels)}</span>`;
+    }).join("");
+
+    return `
+      <article class="warehouse-zone-card">
+        <div class="warehouse-zone-head">
+          <b>${esc(zone)} · ${esc(LOCATION_ZONES[zone]||zone)}</b>
+          <span>${zoneItems} productos</span>
+        </div>
+        <div class="warehouse-zone-racks">${chips}</div>
+        <button type="button" class="text-btn" data-zone-filter="${esc(zone)}">Ver productos de esta zona</button>
+      </article>
+    `;
+  });
+
+  if(unlocated.length){
+    cards.push(`
+      <article class="warehouse-zone-card">
+        <div class="warehouse-zone-head">
+          <b>Sin ubicación asignada</b>
+          <span>${unlocated.length} productos</span>
+        </div>
+        <button type="button" class="text-btn" data-open-unlocated>Asignar ubicaciones pendientes</button>
+      </article>
+    `);
+  }
+
+  $("warehouseZoneList").innerHTML=cards.length?cards.join(""):'<div class="empty-state">Todavía no hay ubicaciones estructuradas.</div>';
+
+  document.querySelectorAll("[data-zone-filter]").forEach(btn=>btn.addEventListener("click",()=>{
+    $("searchInput").value=btn.dataset.zoneFilter+"-";
+    state.filter="all";
+    renderProducts();
+    closeSheet("warehouseMapSheet");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }));
+
+  const pendingBtn=document.querySelector("[data-open-unlocated]");
+  if(pendingBtn)pendingBtn.addEventListener("click",()=>{
+    closeSheet("warehouseMapSheet");
+    $("qrLabelFilter").value="unlocated";
+    $("qrLabelSearch").value="";
+    renderQrLabelList();
+    openSheet("qrLabelsSheet");
+  });
+}
+
+function openWarehouseMap(){
+  renderWarehouseMap();
+  openSheet("warehouseMapSheet");
+}
+
 function isWeightItem(item){
   const u=String(item.unit||"").toLowerCase();
   return ["kg","g","m"].includes(u)||/\bGRANEL\b|\bKG\b/i.test(item.name||"");
@@ -505,9 +658,9 @@ function renderQrLabelList(){
     e.stopPropagation();
     closeSheet("qrLabelsSheet");
     selectProduct(btn.dataset.locationCode);
-    $("locationInput").value=state.selected?.location||"";
+    prepareLocationEditor(state.selected?.location||"");
     $("locationEditor").classList.remove("hidden");
-    setTimeout(()=>$("locationInput").focus(),80);
+    setTimeout(()=>$("locationZone").focus(),80);
   }));
   updateQrSelectionCount();
 }
@@ -643,15 +796,21 @@ function selectProduct(code){
   $("productStock").textContent=num(item.stock)+" "+unit(item.unit);
   $("productMin").textContent="Mínimo "+num(item.min)+" "+unit(item.unit);
   $("productMax").textContent="Máximo "+num(item.max)+" "+unit(item.unit);
-  $("productLocation").textContent=item.location||"Sin ubicación";
-  $("locationInput").value=item.location||"";
+  $("productLocation").textContent=locationLabel(item.location);
+  prepareLocationEditor(item.location||"");
   $("locationEditor").classList.add("hidden");
   openSheet("productSheet");
 }
 
 async function saveSelectedLocation(){
   if(!state.selected)return;
-  const location=$("locationInput").value.trim();
+  updateLocationPreview();
+  const location=buildLocationCode();
+  if(!location){
+    toast("Completa zona, mueble y nivel para generar la ubicación.");
+    return;
+  }
+
   const btn=$("saveLocationBtn");
   btn.disabled=true;
   try{
@@ -664,11 +823,13 @@ async function saveSelectedLocation(){
     const idx=state.items.findIndex(i=>i.code===state.selected.code);
     if(idx>=0)state.items[idx]={...state.items[idx],location:data.location||""};
 
-    $("productLocation").textContent=data.location||"Sin ubicación";
+    $("productLocation").textContent=locationLabel(data.location);
     $("locationEditor").classList.add("hidden");
     renderProducts();
+    updateWarehouseMapSummary();
     if($("qrLabelsSheet").classList.contains("show"))renderQrLabelList();
-    toast(data.location?"Ubicación guardada.":"Ubicación eliminada.");
+    if($("warehouseMapSheet").classList.contains("show"))renderWarehouseMap();
+    toast("Ubicación "+data.location+" guardada.");
   }catch(err){
     toast(err.message);
   }finally{
@@ -753,15 +914,20 @@ $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filte
 $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
 $("qrLabelsCard").addEventListener("click",openQrLabels);
+$("warehouseMapCard").addEventListener("click",openWarehouseMap);
 $("editLocationBtn").addEventListener("click",()=>{
   if(!state.selected)return;
-  $("locationInput").value=state.selected.location||"";
+  prepareLocationEditor(state.selected.location||"");
   $("locationEditor").classList.remove("hidden");
-  setTimeout(()=>$("locationInput").focus(),60);
+  setTimeout(()=>$("locationZone").focus(),60);
 });
 $("cancelLocationBtn").addEventListener("click",()=>$("locationEditor").classList.add("hidden"));
 $("saveLocationBtn").addEventListener("click",saveSelectedLocation);
-$("locationInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();saveSelectedLocation();}});
+["locationZone","locationRack","locationLevel"].forEach(id=>{
+  $(id).addEventListener("input",updateLocationPreview);
+  $(id).addEventListener("change",updateLocationPreview);
+});
+$("locationLevel").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();saveSelectedLocation();}});
 $("qrLabelFilter").addEventListener("change",renderQrLabelList);
 $("qrLabelSearch").addEventListener("input",renderQrLabelList);
 $("selectVisibleLabelsBtn").addEventListener("click",()=>{
