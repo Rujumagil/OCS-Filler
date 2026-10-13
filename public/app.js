@@ -19,7 +19,12 @@ const state={
   scanBusy:false,
   scanMode:null,
   scannedBarcode:"",
-  resumeScanner:false
+  resumeScanner:false,
+  selectionFromScanner:false,
+  scanSessionId:"",
+  scanSessionMode:null,
+  scanSessionCount:0,
+  scanSessionLabel:""
 };
 
 const $=id=>document.getElementById(id);
@@ -171,6 +176,53 @@ function scannerModeCopy(mode){
     exit:{title:"Escanear para salida",subtitle:"Escanea el producto que vas a surtir."},
     count:{title:"Escanear para conteo",subtitle:"Escanea el producto que vas a contar."}
   }[mode]||{title:"Escanear producto",subtitle:"Apunta la cámara al código de barras o QR."};
+}
+
+function newScanSessionId(){
+  const stamp=new Date().toISOString().slice(0,10).replaceAll("-","");
+  const tail=(crypto.randomUUID?.()||String(Date.now())).replaceAll("-","").slice(0,6).toUpperCase();
+  return "SES-"+stamp+"-"+tail;
+}
+
+function ensureScanSession(mode){
+  if(!["entry","exit","count"].includes(mode))return;
+  if(state.scanSessionId&&state.scanSessionMode===mode)return;
+  state.scanSessionId=newScanSessionId();
+  state.scanSessionMode=mode;
+  state.scanSessionCount=0;
+  state.scanSessionLabel="";
+}
+
+function clearScanSession(){
+  state.scanSessionId="";
+  state.scanSessionMode=null;
+  state.scanSessionCount=0;
+  state.scanSessionLabel="";
+  state.selectionFromScanner=false;
+  state.resumeScanner=false;
+}
+
+function renderScanSession(){
+  const active=Boolean(state.scanSessionId&&state.scanSessionMode);
+  $("scanSessionBar").classList.toggle("hidden",!active);
+  if(!active)return;
+  const labels={entry:"Recepción / Entrada",exit:"Surtido / Salida",count:"Conteo físico"};
+  $("scanSessionMode").textContent=labels[state.scanSessionMode]||"Sesión";
+  $("scanSessionCount").textContent=state.scanSessionCount+" "+(state.scanSessionCount===1?"movimiento":"movimientos");
+  $("scanSessionLabel").value=state.scanSessionLabel||"";
+  $("scanSessionLabel").placeholder=state.scanSessionMode==="entry"
+    ?"Manifiesto o remisión (opcional)"
+    :state.scanSessionMode==="exit"
+      ?"Destino, área o solicitud (opcional)"
+      :"Zona o referencia de conteo (opcional)";
+}
+
+function finishScanSession(){
+  const count=state.scanSessionCount;
+  stopScanner(true);
+  clearScanSession();
+  closeSheet("scannerSheet");
+  toast(count?("Sesión terminada · "+count+" movimientos."):"Sesión terminada.");
 }
 
 function stopScanner(clearMode=false){
