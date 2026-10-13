@@ -315,8 +315,12 @@ async function linkBarcode(env, rawValue, itemCode, responsible) {
 
 async function updateItemLocation(env, itemCode, rawLocation) {
   const code = String(itemCode || "").trim();
-  const location = String(rawLocation || "").trim().slice(0, 80);
+  const location = String(rawLocation || "").trim().toUpperCase().slice(0, 80);
   if (!code) throw new Error("item_not_found");
+
+  if (location && !/^[A-Z0-9]{2,6}-[A-Z0-9]{1,8}-\d{2}$/.test(location)) {
+    throw new Error("location_invalid");
+  }
 
   const rows = await getRange(env, "Catalogo!A5:L1000");
   const index = rows.findIndex(r => String(r?.[0] || "").trim() === code);
