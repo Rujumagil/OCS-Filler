@@ -575,11 +575,13 @@ $("scanMovementBtn").addEventListener("click",()=>openScanner(null));
 $("restartScannerBtn").addEventListener("click",startScanner);
 $("manualBarcodeBtn").addEventListener("click",()=>handleBarcode($("manualBarcodeInput").value));
 $("manualBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();handleBarcode($("manualBarcodeInput").value);}});
+$("scanSessionLabel").addEventListener("input",()=>{state.scanSessionLabel=$("scanSessionLabel").value.trim().slice(0,80);});
+$("endScanSessionBtn").addEventListener("click",finishScanSession);
 $("scannerManualSearchBtn").addEventListener("click",()=>{
   const mode=state.scanMode;
   stopScanner(false);
   closeSheet("scannerSheet");
-  state.resumeScanner=false;
+  state.resumeScanner=Boolean(mode);
   state.scanMode=null;
   state.pendingMode=mode;
   switchView("home");
@@ -587,10 +589,22 @@ $("scannerManualSearchBtn").addEventListener("click",()=>{
   setTimeout(()=>$("searchInput").focus(),80);
 });
 $("linkProductSearch").addEventListener("input",renderLinkResults);
-$("scannerCloseBtn").addEventListener("click",()=>{stopScanner(true);closeSheet("scannerSheet");});
-$("scannerSheet").addEventListener("click",e=>{if(e.target===$("scannerSheet"))stopScanner(true);});
+$("scannerCloseBtn").addEventListener("click",()=>{
+  if(state.scanSessionId)finishScanSession();
+  else{stopScanner(true);closeSheet("scannerSheet");}
+});
+$("scannerSheet").addEventListener("click",e=>{
+  if(e.target!==$("scannerSheet"))return;
+  if(state.scanSessionId)finishScanSession();
+  else{stopScanner(true);closeSheet("scannerSheet");}
+});
 const movementClose=document.querySelector('[data-close="movementSheet"]');
-if(movementClose)movementClose.addEventListener("click",()=>{state.resumeScanner=false;state.scanMode=null;});
+if(movementClose)movementClose.addEventListener("click",()=>{
+  const returnMode=state.resumeScanner&&state.scanSessionMode?state.scanSessionMode:null;
+  state.resumeScanner=false;
+  state.scanMode=null;
+  if(returnMode)setTimeout(()=>openScanner(returnMode),180);
+});
 $("logoutBtn").addEventListener("click",logout);
 $("reloadHistoryBtn").addEventListener("click",loadHistory);
 
@@ -598,9 +612,19 @@ document.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click"
 
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{
   const nav=b.dataset.nav;
-  if(nav==="history"){switchView("history");return;}
+  if(nav==="history"){
+    stopScanner(true);
+    clearScanSession();
+    switchView("history");
+    return;
+  }
   switchView("home");
-  if(nav==="home"){state.pendingMode=null;state.resumeScanner=false;state.scanMode=null;return;}
+  if(nav==="home"){
+    stopScanner(true);
+    clearScanSession();
+    state.pendingMode=null;
+    return;
+  }
   if(["entry","exit","count"].includes(nav)){
     state.pendingMode=null;
     openScanner(nav);
@@ -639,14 +663,28 @@ $("movementForm").addEventListener("submit",async e=>{
   try{
     let result;
     if(state.currentMode==="count"){
-      result=await api("/api/count",{method:"POST",body:JSON.stringify({code:state.selected.code,counted:quantity,notes})});
+      result=await api("/api/count",{method:"POST",body:JSON.stringify({
+        code:state.selected.code,
+        counted:quantity,
+        notes,
+        sessionId:state.scanSessionId,
+        sessionLabel:state.scanSessionLabel
+      })});
       toast(result.difference===0?"Conteo correcto. Sin ajuste.":"Conteo guardado y existencia ajustada.");
     }else{
-      result=await api("/api/movement",{method:"POST",body:JSON.stringify({code:state.selected.code,type:state.currentMode,quantity,reason:notes})});
+      result=await api("/api/movement",{method:"POST",body:JSON.stringify({
+        code:state.selected.code,
+        type:state.currentMode,
+        quantity,
+        reason:notes,
+        sessionId:state.scanSessionId,
+        sessionLabel:state.scanSessionLabel
+      })});
       toast("Movimiento registrado.");
     }
     const completedCode=state.selected.code;
     const resumeMode=state.resumeScanner?state.currentMode:null;
+    if(state.scanSessionId)state.scanSessionCount+=1;
     closeSheet("movementSheet");
     await loadInventory();
     state.selected=state.items.find(i=>i.code===completedCode)||null;
