@@ -159,6 +159,180 @@ function renderTodayDelivery(){
   `).join(""):'<div class="empty-state">Sin productos recibidos.</div>';
 }
 
+function scannerModeCopy(mode){
+  return {
+    entry:{title:"Escanear para entrada",subtitle:"Escanea el producto que vas a recibir."},
+    exit:{title:"Escanear para salida",subtitle:"Escanea el producto que vas a surtir."},
+    count:{title:"Escanear para conteo",subtitle:"Escanea el producto que vas a contar."}
+  }[mode]||{title:"Escanear producto",subtitle:"Apunta la cámara al código de barras o QR."};
+}
+
+function stopScanner(clearMode=false){
+  clearTimeout(state.scannerTimer);
+  state.scannerTimer=null;
+  if(state.scannerStream){
+    state.scannerStream.getTracks().forEach(t=>t.stop());
+    state.scannerStream=null;
+  }
+  const video=$("scannerVideo");
+  if(video)video.srcObject=null;
+  if(clearMode){
+    state.scanMode=null;
+    state.resumeScanner=false;
+  }
+}
+
+async function openScanner(mode=null){
+  state.scanMode=mode;
+  state.scannedBarcode="";
+  state.scanBusy=false;
+  const copy=scannerModeCopy(mode);
+  $("scannerTitle").textContent=copy.title;
+  $("scannerSubtitle").textContent=copy.subtitle;
+  $("scannerStatus").textContent="Preparando cámara…";
+  $("barcodeLinkPanel").classList.add("hidden");
+  $("manualBarcodeInput").value="";
+  $("linkProductSearch").value="";
+  $("linkProductResults").innerHTML="";
+  $("restartScannerBtn").classList.add("hidden");
+  openSheet("scannerSheet");
+  await startScanner();
+}
+
+async function startScanner(){
+  stopScanner(false);
+  state.scanBusy=false;
+
+  if(!navigator.mediaDevices?.getUserMedia){
+    $("scannerStatus").textContent="Este navegador no permite usar la cámara. Puedes escribir el código manualmente.";
+    $("restartScannerBtn").classList.remove("hidden");
+    return;
+  }
+
+  if(!("BarcodeDetector" in window)){
+    $("scannerStatus").textContent="La lectura automática no está disponible en este navegador. Usa el campo de código o un lector Bluetooth/USB.";
+    $("restartScannerBtn").classList.add("hidden");
+    return;
+  }
+
+  try{
+    const supported=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+    const preferred=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code","data_matrix"];
+    const formats=preferred.filter(x=>supported.includes(x));
+    state.scannerDetector=formats.length?new BarcodeDetector({formats}):new BarcodeDetector();
+
+    state.scannerStream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:1280},
+        height:{ideal:720}
+      }
+    });
+
+    const video=$("scannerVideo");
+    video.srcObject=state.scannerStream;
+    await video.play();
+    $("scannerStatus").textContent="Listo. Centra el código dentro del recuadro.";
+    scanFrame();
+  }catch(e){
+    $("scannerStatus").textContent="No pudimos abrir la cámara. Revisa el permiso del navegador o escribe el código manualmente.";
+    $("restartScannerBtn").classList.remove("hidden");
+  }
+}
+
+async function scanFrame(){
+  if(!$("scannerSheet").classList.contains("show")||!state.scannerDetector||!state.scannerStream)return;
+  if(state.scanBusy){
+    state.scannerTimer=setTimeout(scanFrame,250);
+    return;
+  }
+
+  try{
+    const video=$("scannerVideo");
+    if(video.readyState>=2){
+      const codes=await state.scannerDetector.detect(video);
+      if(codes?.length&&codes[0]?.rawValue){
+        await handleBarcode(codes[0].rawValue);
+        return;
+      }
+    }
+  }catch(_){}
+
+  state.scannerTimer=setTimeout(scanFrame,250);
+}
+
+async function handleBarcode(raw){
+  const barcode=String(raw||"").trim();
+  if(!barcode||state.scanBusy)return;
+  state.scanBusy=true;
+  state.scannedBarcode=barcode;
+  $("scannerStatus").textContent="Código detectado: "+barcode;
+  if(navigator.vibrate)navigator.vibrate(60);
+  stopScanner(false);
+
+  try{
+    const data=await api("/api/barcode/lookup",{
+      method:"POST",
+      body:JSON.stringify({barcode})
+    });
+    state.selected=data.item;
+    const mode=state.scanMode;
+    state.resumeScanner=Boolean(mode);
+    closeSheet("scannerSheet");
+    if(mode)openMovement(mode);
+    else selectProduct(data.item.code);
+  }catch(err){
+    if(err.code==="barcode_not_linked"){
+      $("scannerStatus").textContent="Código nuevo. Vincúlalo una sola vez con el producto correcto.";
+      $("unknownBarcode").textContent=barcode;
+      $("barcodeLinkPanel").classList.remove("hidden");
+      renderLinkResults();
+      setTimeout(()=>$("linkProductSearch").focus(),80);
+    }else{
+      toast(err.message);
+      $("scannerStatus").textContent="No se pudo leer el código. Intenta nuevamente.";
+      $("restartScannerBtn").classList.remove("hidden");
+    }
+    state.scanBusy=false;
+  }
+}
+
+function renderLinkResults(){
+  const q=$("linkProductSearch").value.trim().toLowerCase();
+  if(q.length<2){
+    $("linkProductResults").innerHTML='<div class="empty-state">Escribe al menos 2 caracteres para buscar el producto.</div>';
+    return;
+  }
+  const rows=state.items.filter(i=>i.name.toLowerCase().includes(q)||i.code.toLowerCase().includes(q)).slice(0,10);
+  $("linkProductResults").innerHTML=rows.length?rows.map(i=>`
+    <button type="button" class="link-result" data-link-code="${esc(i.code)}">
+      <b>${esc(i.name)}</b>
+      <small>${esc(i.code)} · ${num(i.stock)} ${unit(i.unit)}</small>
+    </button>
+  `).join(""):'<div class="empty-state">No encontramos productos.</div>';
+  document.querySelectorAll("[data-link-code]").forEach(b=>b.addEventListener("click",()=>linkBarcodeToProduct(b.dataset.linkCode)));
+}
+
+async function linkBarcodeToProduct(code){
+  if(!state.scannedBarcode)return;
+  try{
+    const data=await api("/api/barcode/link",{
+      method:"POST",
+      body:JSON.stringify({barcode:state.scannedBarcode,code})
+    });
+    state.selected=data.item;
+    const mode=state.scanMode;
+    state.resumeScanner=Boolean(mode);
+    closeSheet("scannerSheet");
+    toast("Código vinculado. Ya quedó aprendido.");
+    if(mode)openMovement(mode);
+    else selectProduct(code);
+  }catch(err){
+    toast(err.code==="barcode_already_linked"?"Ese código ya está vinculado a otro producto.":err.message);
+  }
+}
+
 function filteredItems(){
   const q=$("searchInput").value.trim().toLowerCase();
   let rows=[...state.items];
