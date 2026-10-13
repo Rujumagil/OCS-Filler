@@ -383,6 +383,7 @@ async function handleBarcode(raw){
     state.selected=data.item;
     const mode=state.scanMode;
     state.resumeScanner=Boolean(mode);
+    state.selectionFromScanner=!mode;
     closeSheet("scannerSheet");
     if(mode)openMovement(mode);
     else selectProduct(data.item.code);
@@ -428,6 +429,7 @@ async function linkBarcodeToProduct(code){
     state.selected=data.item;
     const mode=state.scanMode;
     state.resumeScanner=Boolean(mode);
+    state.selectionFromScanner=!mode;
     closeSheet("scannerSheet");
     toast("Código vinculado. Ya quedó aprendido.");
     if(mode)openMovement(mode);
