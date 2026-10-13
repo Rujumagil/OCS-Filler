@@ -207,8 +207,24 @@ function inventoryItem(row) {
 }
 
 async function loadInventory(env) {
-  const rows = await getRange(env, "Inventario!A4:N1000");
-  return rows.filter(r => r[0] && r[1]).map(inventoryItem);
+  const [rows, catalog] = await Promise.all([
+    getRange(env, "Inventario!A4:N1000"),
+    getRange(env, "Catalogo!A5:L1000")
+  ]);
+
+  const locations = new Map(
+    catalog
+      .filter(r => r[0])
+      .map(r => [String(r[0] || "").trim(), String(r[11] || "").trim()])
+  );
+
+  return rows
+    .filter(r => r[0] && r[1])
+    .map(r => {
+      const item = inventoryItem(r);
+      item.location = locations.get(item.code) || "";
+      return item;
+    });
 }
 
 function stats(items) {
@@ -295,6 +311,24 @@ async function linkBarcode(env, rawValue, itemCode, responsible) {
   ]);
 
   return { ok: true, barcode, item, responsible: String(responsible || "").trim() };
+}
+
+async function updateItemLocation(env, itemCode, rawLocation) {
+  const code = String(itemCode || "").trim();
+  const location = String(rawLocation || "").trim().slice(0, 80);
+  if (!code) throw new Error("item_not_found");
+
+  const rows = await getRange(env, "Catalogo!A5:L1000");
+  const index = rows.findIndex(r => String(r?.[0] || "").trim() === code);
+  if (index < 0) throw new Error("item_not_found");
+
+  const row = index + 5;
+  await batchUpdateRanges(env, [
+    { range: "Catalogo!L4", values: [["Ubicación almacén"]] },
+    { range: "Catalogo!L" + row, values: [[location]] }
+  ]);
+
+  return { code, location, row };
 }
 
 function mxDateTime() {
@@ -596,6 +630,12 @@ async function handleApi(request, env, url) {
     const result = await linkBarcode(env, body.barcode, body.code, session.name);
     if (result?.ok === false) return json(result, 409);
     return json({ ok: true, barcode: result.barcode, item: result.item });
+  }
+
+  if (url.pathname === "/api/location" && request.method === "POST") {
+    const body = await readJson(request);
+    const result = await updateItemLocation(env, body.code, body.location);
+    return json({ ok: true, ...result });
   }
 
   if (url.pathname === "/api/movement" && request.method === "POST") {
