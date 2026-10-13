@@ -254,6 +254,7 @@ async function openScanner(mode=null){
   state.scanMode=mode;
   state.scannedBarcode="";
   state.scanBusy=false;
+  if(mode)ensureScanSession(mode);
   const copy=scannerModeCopy(mode);
   $("scannerTitle").textContent=copy.title;
   $("scannerSubtitle").textContent=copy.subtitle;
@@ -263,6 +264,7 @@ async function openScanner(mode=null){
   $("linkProductSearch").value="";
   $("linkProductResults").innerHTML="";
   $("restartScannerBtn").classList.add("hidden");
+  renderScanSession();
   openSheet("scannerSheet");
   await startScanner();
 }
