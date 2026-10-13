@@ -74,7 +74,8 @@ async function api(path,options={}){
       barcode_required:"No se detectó un código.",
       barcode_not_linked:"El código todavía no está vinculado.",
       barcode_already_linked:"Ese código ya está vinculado a otro producto.",
-      barcode_link_invalid:"No se pudo vincular el código."
+      barcode_link_invalid:"No se pudo vincular el código.",
+      location_invalid:"No se pudo guardar la ubicación."
     };
     const err=new Error(messages[data.error]||data.error||"No se pudo completar la operación.");
     err.code=data.error||"request_failed";
@@ -461,6 +462,7 @@ function qrLabelVisibleItems(){
   if(filter==="produce")rows=rows.filter(i=>i.family==="Frutas y verduras");
   if(filter==="weight")rows=rows.filter(isWeightItem);
   if(filter==="special")rows=rows.filter(i=>i.family==="Productos especiales");
+  if(filter==="unlocated")rows=rows.filter(i=>!String(i.location||"").trim());
 
   if(q)rows=rows.filter(i=>
     i.name.toLowerCase().includes(q)||
@@ -487,6 +489,7 @@ function renderQrLabelList(){
       <div>
         <b>${esc(i.name)}</b>
         <small>${esc(i.code)} · ${esc(i.family||"")} · ${unit(i.unit)}</small>
+        <em class="qr-label-location">${i.location?("⌖ "+esc(i.location)):"⌖ Sin ubicación"}</em>
       </div>
       <span>QR OCS</span>
     </label>
@@ -544,6 +547,7 @@ async function printQrLabels(){
             <div class="print-brand">OCS · ALMACÉN FILLER</div>
             <h2>${esc(item.name)}</h2>
             <p>${esc(item.family||"Producto")} · ${unit(item.unit)}</p>
+            <p class="print-location">Ubicación: ${esc(item.location||"Sin asignar")}</p>
             <strong>${esc(item.code)}</strong>
           </div>
           <img src="${dataUrl}" alt="QR ${esc(item.code)}">
@@ -604,6 +608,7 @@ function renderProducts(){
       <div class="product-footer">
         <span class="status-pill ${statusClass(i.status)}">${esc(i.status)}</span>
         <span class="family-pill">mín. ${num(i.min)} · máx. ${num(i.max)} ${unit(i.unit)}</span>
+        ${i.location?`<span class="location-pill">⌖ ${esc(i.location)}</span>`:""}
       </div>
     </button>
   `).join(""):`<div class="empty-state">No encontramos productos con ese criterio.</div>`;
@@ -625,7 +630,37 @@ function selectProduct(code){
   $("productStock").textContent=num(item.stock)+" "+unit(item.unit);
   $("productMin").textContent="Mínimo "+num(item.min)+" "+unit(item.unit);
   $("productMax").textContent="Máximo "+num(item.max)+" "+unit(item.unit);
+  $("productLocation").textContent=item.location||"Sin ubicación";
+  $("locationInput").value=item.location||"";
+  $("locationEditor").classList.add("hidden");
   openSheet("productSheet");
+}
+
+async function saveSelectedLocation(){
+  if(!state.selected)return;
+  const location=$("locationInput").value.trim();
+  const btn=$("saveLocationBtn");
+  btn.disabled=true;
+  try{
+    const data=await api("/api/location",{
+      method:"POST",
+      body:JSON.stringify({code:state.selected.code,location})
+    });
+
+    state.selected={...state.selected,location:data.location||""};
+    const idx=state.items.findIndex(i=>i.code===state.selected.code);
+    if(idx>=0)state.items[idx]={...state.items[idx],location:data.location||""};
+
+    $("productLocation").textContent=data.location||"Sin ubicación";
+    $("locationEditor").classList.add("hidden");
+    renderProducts();
+    if($("qrLabelsSheet").classList.contains("show"))renderQrLabelList();
+    toast(data.location?"Ubicación guardada.":"Ubicación eliminada.");
+  }catch(err){
+    toast(err.message);
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 function openMovement(mode){
@@ -705,6 +740,15 @@ $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filte
 $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
 $("qrLabelsCard").addEventListener("click",openQrLabels);
+$("editLocationBtn").addEventListener("click",()=>{
+  if(!state.selected)return;
+  $("locationInput").value=state.selected.location||"";
+  $("locationEditor").classList.remove("hidden");
+  setTimeout(()=>$("locationInput").focus(),60);
+});
+$("cancelLocationBtn").addEventListener("click",()=>$("locationEditor").classList.add("hidden"));
+$("saveLocationBtn").addEventListener("click",saveSelectedLocation);
+$("locationInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();saveSelectedLocation();}});
 $("qrLabelFilter").addEventListener("change",renderQrLabelList);
 $("qrLabelSearch").addEventListener("input",renderQrLabelList);
 $("selectVisibleLabelsBtn").addEventListener("click",()=>{
