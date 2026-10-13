@@ -467,6 +467,17 @@ $("scanQuickBtn").addEventListener("click",()=>openScanner(null));
 $("restartScannerBtn").addEventListener("click",startScanner);
 $("manualBarcodeBtn").addEventListener("click",()=>handleBarcode($("manualBarcodeInput").value));
 $("manualBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();handleBarcode($("manualBarcodeInput").value);}});
+$("scannerManualSearchBtn").addEventListener("click",()=>{
+  const mode=state.scanMode;
+  stopScanner(false);
+  closeSheet("scannerSheet");
+  state.resumeScanner=false;
+  state.scanMode=null;
+  state.pendingMode=mode;
+  switchView("home");
+  toast(mode==="entry"?"Busca el producto que entra.":mode==="exit"?"Busca el producto que sale.":mode==="count"?"Busca el producto que vas a contar.":"Busca el producto.");
+  setTimeout(()=>$("searchInput").focus(),80);
+});
 $("linkProductSearch").addEventListener("input",renderLinkResults);
 $("scannerCloseBtn").addEventListener("click",()=>{stopScanner(true);closeSheet("scannerSheet");});
 $("scannerSheet").addEventListener("click",e=>{if(e.target===$("scannerSheet"))stopScanner(true);});
