@@ -61,7 +61,11 @@ async function api(path,options={}){
       item_not_found:"Producto no encontrado.",
       insufficient_stock:"La cantidad supera la existencia disponible.",
       movement_capacity_reached:"La bitácora llegó a su capacidad.",
-      invalid_count:"El conteo no es válido."
+      invalid_count:"El conteo no es válido.",
+      barcode_required:"No se detectó un código.",
+      barcode_not_linked:"El código todavía no está vinculado.",
+      barcode_already_linked:"Ese código ya está vinculado a otro producto.",
+      barcode_link_invalid:"No se pudo vincular el código."
     };
     const err=new Error(messages[data.error]||data.error||"No se pudo completar la operación.");
     err.code=data.error||"request_failed";
@@ -459,6 +463,15 @@ $("kpiOrder").addEventListener("click",()=>{$("searchInput").value="";state.filt
 $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filter="zero";renderProducts();});
 $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
+$("scanQuickBtn").addEventListener("click",()=>openScanner(null));
+$("restartScannerBtn").addEventListener("click",startScanner);
+$("manualBarcodeBtn").addEventListener("click",()=>handleBarcode($("manualBarcodeInput").value));
+$("manualBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();handleBarcode($("manualBarcodeInput").value);}});
+$("linkProductSearch").addEventListener("input",renderLinkResults);
+$("scannerCloseBtn").addEventListener("click",()=>{stopScanner(true);closeSheet("scannerSheet");});
+$("scannerSheet").addEventListener("click",e=>{if(e.target===$("scannerSheet"))stopScanner(true);});
+const movementClose=document.querySelector('[data-close="movementSheet"]');
+if(movementClose)movementClose.addEventListener("click",()=>{state.resumeScanner=false;state.scanMode=null;});
 $("logoutBtn").addEventListener("click",logout);
 $("reloadHistoryBtn").addEventListener("click",loadHistory);
 
@@ -468,13 +481,11 @@ document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()
   const nav=b.dataset.nav;
   if(nav==="history"){switchView("history");return;}
   switchView("home");
-  if(nav==="home"){state.pendingMode=null;return;}
-  state.pendingMode=nav;
-  state.filter="all";
-  $("searchInput").value="";
-  renderProducts();
-  toast(nav==="entry"?"Selecciona el producto que entra.":nav==="exit"?"Selecciona el producto que sale.":"Selecciona el producto que vas a contar.");
-  setTimeout(()=>$("searchInput").focus(),80);
+  if(nav==="home"){state.pendingMode=null;state.resumeScanner=false;state.scanMode=null;return;}
+  if(["entry","exit","count"].includes(nav)){
+    state.pendingMode=null;
+    openScanner(nav);
+  }
 }));
 
 $("quantityInput").addEventListener("input",()=>{
@@ -515,9 +526,15 @@ $("movementForm").addEventListener("submit",async e=>{
       result=await api("/api/movement",{method:"POST",body:JSON.stringify({code:state.selected.code,type:state.currentMode,quantity,reason:notes})});
       toast("Movimiento registrado.");
     }
+    const completedCode=state.selected.code;
+    const resumeMode=state.resumeScanner?state.currentMode:null;
     closeSheet("movementSheet");
     await loadInventory();
-    state.selected=state.items.find(i=>i.code===state.selected.code)||null;
+    state.selected=state.items.find(i=>i.code===completedCode)||null;
+    if(resumeMode){
+      state.resumeScanner=false;
+      setTimeout(()=>openScanner(resumeMode),250);
+    }
   }catch(err){toast(err.message);}
   finally{$("saveMovementBtn").disabled=false;}
 });
