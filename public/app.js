@@ -500,6 +500,12 @@ function openMovement(mode){
   if(!item){toast("Selecciona un producto.");return;}
   closeSheet("productSheet");
   state.pendingMode=null;
+
+  if(state.selectionFromScanner&&["entry","exit","count"].includes(mode)){
+    ensureScanSession(mode);
+    state.resumeScanner=true;
+  }
+  state.selectionFromScanner=false;
   state.currentMode=mode;
   const config={
     entry:{eyebrow:"Entrada",title:"Recibir producto",label:"Cantidad que entra",button:"Registrar entrada"},
