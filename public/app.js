@@ -463,7 +463,7 @@ $("kpiOrder").addEventListener("click",()=>{$("searchInput").value="";state.filt
 $("kpiZero").addEventListener("click",()=>{$("searchInput").value="";state.filter="zero";renderProducts();});
 $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
-$("scanQuickBtn").addEventListener("click",()=>openScanner(null));
+$("scanMovementBtn").addEventListener("click",()=>openScanner(null));
 $("restartScannerBtn").addEventListener("click",startScanner);
 $("manualBarcodeBtn").addEventListener("click",()=>handleBarcode($("manualBarcodeInput").value));
 $("manualBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();handleBarcode($("manualBarcodeInput").value);}});
