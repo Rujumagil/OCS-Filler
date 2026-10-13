@@ -371,14 +371,70 @@ async function firstBlankRow(env, range, startRow, limit) {
   throw new Error("movement_capacity_reached");
 }
 
+async function ensureMovementRowFormulas(env, surtidoRow) {
+  const ledgerRow = surtidoRow - 17;
+
+  await batchUpdateRanges(env, [
+    {
+      range: "Surtido Almacén!C" + surtidoRow + ":F" + surtidoRow,
+      values: [[
+        '=IF(B' + surtidoRow + '="","",IFERROR(VLOOKUP(B' + surtidoRow + ',Inventario!$A$4:$L$1000,2,FALSE),""))',
+        '=IF(B' + surtidoRow + '="","",IFERROR(VLOOKUP(B' + surtidoRow + ',Inventario!$A$4:$L$1000,3,FALSE),""))',
+        '=IF(B' + surtidoRow + '="","",IFERROR(VLOOKUP(B' + surtidoRow + ',Inventario!$A$4:$L$1000,4,FALSE),""))',
+        '=IF(B' + surtidoRow + '="","",IFERROR(VLOOKUP(B' + surtidoRow + ',Inventario!$A$4:$K$1000,11,FALSE),""))'
+      ]]
+    },
+    {
+      range: "Surtido Almacén!K" + surtidoRow + ":M" + surtidoRow,
+      values: [[
+        '=IF(OR(A' + surtidoRow + '="",B' + surtidoRow + '="",G' + surtidoRow + '="",H' + surtidoRow + '=""),"",IF(G' + surtidoRow + '="Entrada","ENT-","SAL-")&TEXT(A' + surtidoRow + ',"yyyymmdd")&"-"&TEXT(ROW()-20,"000"))',
+        '=IF(H' + surtidoRow + '="","",IF(OR(A' + surtidoRow + '="",B' + surtidoRow + '="",G' + surtidoRow + '="",J' + surtidoRow + '=""),"PENDIENTE",IF(H' + surtidoRow + '<=0,"REVISAR","REGISTRADO")))',
+        '=IF(L' + surtidoRow + '<>"REGISTRADO","",IF(G' + surtidoRow + '="Entrada","OK",IF(F' + surtidoRow + '<0,"EXCEDE EXISTENCIA","OK")))'
+      ]]
+    },
+    {
+      range: "Entradas!A" + ledgerRow + ":J" + ledgerRow,
+      values: [[
+        '=IF(AND(\'Surtido Almacén\'!$L' + surtidoRow + '="REGISTRADO",\'Surtido Almacén\'!$G' + surtidoRow + '="Entrada"),\'Surtido Almacén\'!$A' + surtidoRow + ',"")',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$K' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$B' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$C' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$D' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$H' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$E' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",IFERROR(VLOOKUP($C' + ledgerRow + ',Catalogo!$A$5:$F$1000,6,FALSE),""))',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$I' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$J' + surtidoRow + ')'
+      ]]
+    },
+    {
+      range: "Salidas!A" + ledgerRow + ":I" + ledgerRow,
+      values: [[
+        '=IF(AND(\'Surtido Almacén\'!$L' + surtidoRow + '="REGISTRADO",\'Surtido Almacén\'!$G' + surtidoRow + '="Salida"),\'Surtido Almacén\'!$A' + surtidoRow + ',"")',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$K' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$B' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$C' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$D' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$H' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$E' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$I' + surtidoRow + ')',
+        '=IF($A' + ledgerRow + '="","",\'Surtido Almacén\'!$J' + surtidoRow + ')'
+      ]]
+    }
+  ]);
+}
+
 async function recordSurtido(env, item, type, qty, reason, responsible) {
   const row = await firstBlankRow(env, "Surtido Almacén!B21:B2020", 21, 2000);
   const code = item.code;
   const id = folio(type === "Entrada" ? "ENT" : "SAL");
+
+  await ensureMovementRowFormulas(env, row);
   await batchUpdateRanges(env, [
     { range: "Surtido Almacén!A" + row + ":B" + row, values: [[mxDateTime(), code]] },
     { range: "Surtido Almacén!G" + row + ":J" + row, values: [[type, qty, reason || "", responsible || ""]] }
   ]);
+
   return { row, folio: id };
 }
 
