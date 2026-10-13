@@ -10,7 +10,14 @@ const state={
   delivery:null,
   selected:null,
   pendingMode:null,
-  filter:"all"
+  filter:"all",
+  scannerStream:null,
+  scannerDetector:null,
+  scannerTimer:null,
+  scanBusy:false,
+  scanMode:null,
+  scannedBarcode:"",
+  resumeScanner:false
 };
 
 const $=id=>document.getElementById(id);
@@ -56,7 +63,10 @@ async function api(path,options={}){
       movement_capacity_reached:"La bitácora llegó a su capacidad.",
       invalid_count:"El conteo no es válido."
     };
-    throw new Error(messages[data.error]||data.error||"No se pudo completar la operación.");
+    const err=new Error(messages[data.error]||data.error||"No se pudo completar la operación.");
+    err.code=data.error||"request_failed";
+    err.data=data;
+    throw err;
   }
   return data;
 }
