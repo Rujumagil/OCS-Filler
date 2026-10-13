@@ -205,6 +205,7 @@ button{cursor:pointer}
 .qr-label-row small{display:block;color:var(--muted);font-size:.5rem;margin-top:3px}
 .qr-label-location{display:block;color:var(--green-2);font-size:.5rem;font-weight:900;margin-top:3px}
 .qr-label-row>span{font-size:.54rem;font-weight:900;color:var(--green-2);white-space:nowrap}
+.qr-location-btn{border:1px solid var(--line);background:white;color:var(--green-2);border-radius:10px;min-height:34px;padding:0 9px;font-size:.5rem;font-weight:900}
 .qr-print-btn{width:100%;margin-top:10px}
 .label-print-area{display:none}
 .print-label-card{break-inside:avoid;border:1px solid #111;border-radius:3mm;padding:3mm;display:grid;grid-template-columns:1fr 25mm;gap:3mm;align-items:center;min-height:38mm;background:white;color:#111}
