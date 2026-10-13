@@ -449,7 +449,7 @@ function isWeightItem(item){
 function isSuggestedQrItem(item){
   return item.family==="Frutas y verduras"||
     item.family==="Productos especiales"||
-    isWeightItem(item);
+    /\bGRANEL\b/i.test(item.name||"");
 }
 
 function qrLabelVisibleItems(){
