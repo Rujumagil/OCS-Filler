@@ -221,6 +221,82 @@ function stats(items) {
   };
 }
 
+async function loadBarcodeRows(env) {
+  const rows = await getRange(env, "Catalogo!A5:K1000");
+  return rows.map((r, i) => ({
+    row: i + 5,
+    code: String(r[0] || "").trim(),
+    name: String(r[1] || "").trim(),
+    barcodes: String(r[10] || "")
+      .split(/[\n,;|]+/)
+      .map(v => v.trim())
+      .filter(Boolean)
+  })).filter(x => x.code);
+}
+
+async function resolveBarcode(env, rawValue) {
+  const barcode = String(rawValue || "").trim();
+  if (!barcode) return null;
+
+  const items = await loadInventory(env);
+  const direct = items.find(i => i.code === barcode);
+  if (direct) return { item: direct, barcode, directCode: true };
+
+  const barcodeRows = await loadBarcodeRows(env);
+  const linked = barcodeRows.find(r => r.barcodes.includes(barcode));
+  if (!linked) return { item: null, barcode, directCode: false };
+
+  const item = items.find(i => i.code === linked.code) || null;
+  return { item, barcode, directCode: false };
+}
+
+async function linkBarcode(env, rawValue, itemCode, responsible) {
+  const barcode = String(rawValue || "").trim();
+  const code = String(itemCode || "").trim();
+  if (!barcode || !code) throw new Error("barcode_link_invalid");
+
+  const items = await loadInventory(env);
+  const item = items.find(i => i.code === code);
+  if (!item) throw new Error("item_not_found");
+
+  const rows = await getRange(env, "Catalogo!A5:K1000");
+  let targetIndex = -1;
+  let current = "";
+
+  for (let i = 0; i < rows.length; i++) {
+    const rowCode = String(rows[i]?.[0] || "").trim();
+    const list = String(rows[i]?.[10] || "")
+      .split(/[\n,;|]+/)
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    if (list.includes(barcode) && rowCode !== code) {
+      return { ok: false, error: "barcode_already_linked", linkedCode: rowCode };
+    }
+    if (rowCode === code) {
+      targetIndex = i;
+      current = String(rows[i]?.[10] || "").trim();
+    }
+  }
+
+  if (targetIndex < 0) throw new Error("item_not_found");
+
+  const existing = current
+    .split(/[\n,;|]+/)
+    .map(v => v.trim())
+    .filter(Boolean);
+
+  if (!existing.includes(barcode)) existing.push(barcode);
+
+  const sheetRow = targetIndex + 5;
+  await batchUpdateRanges(env, [
+    { range: "Catalogo!K4", values: [["Códigos de barras"]] },
+    { range: "Catalogo!K" + sheetRow, values: [[existing.join("\n")]] }
+  ]);
+
+  return { ok: true, barcode, item, responsible: String(responsible || "").trim() };
+}
+
 function mxDateTime() {
   const parts = new Intl.DateTimeFormat("es-MX", {
     timeZone: "America/Mexico_City",
@@ -440,6 +516,21 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/delivery/today" && request.method === "GET") {
     return json({ ok: true, delivery: await loadTodayDelivery(env) });
+  }
+
+  if (url.pathname === "/api/barcode/lookup" && request.method === "POST") {
+    const body = await readJson(request);
+    const result = await resolveBarcode(env, body.barcode);
+    if (!result?.barcode) return json({ ok: false, error: "barcode_required" }, 400);
+    if (!result.item) return json({ ok: false, error: "barcode_not_linked", barcode: result.barcode }, 404);
+    return json({ ok: true, barcode: result.barcode, item: result.item, directCode: result.directCode });
+  }
+
+  if (url.pathname === "/api/barcode/link" && request.method === "POST") {
+    const body = await readJson(request);
+    const result = await linkBarcode(env, body.barcode, body.code, session.name);
+    if (result?.ok === false) return json(result, 409);
+    return json({ ok: true, barcode: result.barcode, item: result.item });
   }
 
   if (url.pathname === "/api/movement" && request.method === "POST") {
