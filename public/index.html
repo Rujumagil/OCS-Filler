@@ -110,6 +110,16 @@
           <div class="delivery-arrow">›</div>
         </button>
 
+        <button id="qrLabelsCard" class="qr-labels-card" type="button">
+          <div class="qr-labels-icon">QR</div>
+          <div class="qr-labels-copy">
+            <span class="eyebrow">Identificación interna</span>
+            <strong>Etiquetas QR OCS</strong>
+            <p>Frutas, productos a granel y artículos sin código comercial.</p>
+          </div>
+          <div class="qr-labels-arrow">›</div>
+        </button>
+
         <div class="section-head">
           <div>
             <h2 id="listTitle">Inventario</h2>
@@ -192,6 +202,41 @@
         <input id="linkProductSearch" autocomplete="off" placeholder="Buscar producto por nombre o código">
         <div id="linkProductResults" class="link-results"></div>
       </section>
+    </section>
+  </div>
+
+  <div id="qrLabelsSheet" class="sheet-backdrop">
+    <section class="sheet qr-labels-sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Etiquetas internas</span>
+          <h3>QR de anaquel OCS</h3>
+          <p>El QR contiene el código OCS y funciona directamente con el escáner del almacén.</p>
+        </div>
+        <button class="close-btn" data-close="qrLabelsSheet">×</button>
+      </header>
+
+      <div class="qr-label-toolbar">
+        <select id="qrLabelFilter">
+          <option value="suggested">Recomendados</option>
+          <option value="produce">Frutas y verduras</option>
+          <option value="weight">A granel / por peso</option>
+          <option value="special">Proteínas / especiales</option>
+          <option value="all">Todos los productos</option>
+        </select>
+        <input id="qrLabelSearch" autocomplete="off" placeholder="Buscar producto o código">
+      </div>
+
+      <div class="qr-label-actions">
+        <button id="selectVisibleLabelsBtn" type="button" class="text-btn">Seleccionar visibles</button>
+        <button id="clearLabelSelectionBtn" type="button" class="text-btn">Limpiar</button>
+        <span id="qrLabelSelectionCount">0 seleccionadas</span>
+      </div>
+
+      <div id="qrLabelList" class="qr-label-list"></div>
+
+      <button id="printQrLabelsBtn" type="button" class="btn btn-primary btn-large qr-print-btn">Generar e imprimir etiquetas</button>
     </section>
   </div>
 
@@ -297,6 +342,8 @@
       <div id="deliveryList" class="delivery-list"></div>
     </section>
   </div>
+
+  <section id="labelPrintArea" class="label-print-area" aria-hidden="true"></section>
 
   <div id="toast" class="toast"></div>
   <script src="/app.js"></script>
