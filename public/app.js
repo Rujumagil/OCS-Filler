@@ -491,7 +491,7 @@ function renderQrLabelList(){
         <small>${esc(i.code)} · ${esc(i.family||"")} · ${unit(i.unit)}</small>
         <em class="qr-label-location">${i.location?("⌖ "+esc(i.location)):"⌖ Sin ubicación"}</em>
       </div>
-      <span>QR OCS</span>
+      <button type="button" class="qr-location-btn" data-location-code="${esc(i.code)}">${i.location?"Editar":"Ubicar"}</button>
     </label>
   `).join(""):'<div class="empty-state">No hay productos con ese criterio.</div>';
 
@@ -499,6 +499,15 @@ function renderQrLabelList(){
     if(input.checked)state.qrLabelSelected.add(input.dataset.qrCode);
     else state.qrLabelSelected.delete(input.dataset.qrCode);
     updateQrSelectionCount();
+  }));
+  document.querySelectorAll("[data-location-code]").forEach(btn=>btn.addEventListener("click",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    closeSheet("qrLabelsSheet");
+    selectProduct(btn.dataset.locationCode);
+    $("locationInput").value=state.selected?.location||"";
+    $("locationEditor").classList.remove("hidden");
+    setTimeout(()=>$("locationInput").focus(),80);
   }));
   updateQrSelectionCount();
 }
@@ -579,7 +588,11 @@ async function printQrLabels(){
 function filteredItems(){
   const q=$("searchInput").value.trim().toLowerCase();
   let rows=[...state.items];
-  if(q)rows=rows.filter(i=>i.name.toLowerCase().includes(q)||i.code.toLowerCase().includes(q));
+  if(q)rows=rows.filter(i=>
+    i.name.toLowerCase().includes(q)||
+    i.code.toLowerCase().includes(q)||
+    String(i.location||"").toLowerCase().includes(q)
+  );
   if(state.filter==="order")rows=rows.filter(i=>i.min>0&&i.stock<=i.min);
   if(state.filter==="zero")rows=rows.filter(i=>i.stock===0);
   return rows;
