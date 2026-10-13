@@ -525,6 +525,15 @@ async function loadHistory(env) {
     .map(({ _row, ...x }) => x);
 }
 
+function trackedReason(base, sessionId, sessionLabel) {
+  const parts = [String(base || "").trim()].filter(Boolean);
+  const label = String(sessionLabel || "").trim().slice(0, 80);
+  const id = String(sessionId || "").trim().slice(0, 40);
+  if (label) parts.push(label);
+  if (id) parts.push("Sesión " + id);
+  return parts.join(" · ").slice(0, 250);
+}
+
 async function readJson(request) {
   try { return await request.json(); } catch { return {}; }
 }
@@ -595,6 +604,8 @@ async function handleApi(request, env, url) {
     const code = String(body.code || "").trim();
     const qty = number(body.quantity);
     const reason = String(body.reason || "").trim().slice(0, 250);
+    const sessionId = String(body.sessionId || "").trim();
+    const sessionLabel = String(body.sessionLabel || "").trim();
 
     if (!["entry", "exit", "waste"].includes(type)) return json({ ok: false, error: "invalid_type" }, 400);
     if (!code || qty <= 0) return json({ ok: false, error: "invalid_movement" }, 400);
@@ -606,9 +617,9 @@ async function handleApi(request, env, url) {
       return json({ ok: false, error: "insufficient_stock", stock: item.stock, unit: item.unit }, 409);
     }
 
-    if (type === "entry") await recordSurtido(env, item, "Entrada", qty, reason || "Entrada de almacén", session.name);
-    if (type === "exit") await recordSurtido(env, item, "Salida", qty, reason || "Salida de almacén", session.name);
-    if (type === "waste") await recordWaste(env, item, qty, reason || "Merma de almacén", session.name);
+    if (type === "entry") await recordSurtido(env, item, "Entrada", qty, trackedReason(reason || "Entrada de almacén", sessionId, sessionLabel), session.name);
+    if (type === "exit") await recordSurtido(env, item, "Salida", qty, trackedReason(reason || "Salida de almacén", sessionId, sessionLabel), session.name);
+    if (type === "waste") await recordWaste(env, item, qty, trackedReason(reason || "Merma de almacén", sessionId, sessionLabel), session.name);
 
     const expected = type === "entry" ? item.stock + qty : item.stock - qty;
     return json({ ok: true, item: { ...item, stock: expected }, stockBefore: item.stock, stockAfter: expected });
@@ -619,6 +630,8 @@ async function handleApi(request, env, url) {
     const code = String(body.code || "").trim();
     const counted = number(body.counted);
     const notes = String(body.notes || "").trim().slice(0, 250);
+    const sessionId = String(body.sessionId || "").trim();
+    const sessionLabel = String(body.sessionLabel || "").trim();
     if (!code || counted < 0) return json({ ok: false, error: "invalid_count" }, 400);
 
     const items = await loadInventory(env);
@@ -632,14 +645,14 @@ async function handleApi(request, env, url) {
     if (difference > 0) {
       movement = "Entrada";
       adjustment = difference;
-      await recordSurtido(env, item, "Entrada", adjustment, "Ajuste por conteo físico", session.name);
+      await recordSurtido(env, item, "Entrada", adjustment, trackedReason("Ajuste por conteo físico", sessionId, sessionLabel), session.name);
     } else if (difference < 0) {
       movement = "Salida";
       adjustment = Math.abs(difference);
-      await recordSurtido(env, item, "Salida", adjustment, "Ajuste por conteo físico", session.name);
+      await recordSurtido(env, item, "Salida", adjustment, trackedReason("Ajuste por conteo físico", sessionId, sessionLabel), session.name);
     }
 
-    await recordCount(env, item, counted, difference, session.name, notes, movement, adjustment);
+    await recordCount(env, item, counted, difference, session.name, trackedReason(notes, sessionId, sessionLabel), movement, adjustment);
     return json({
       ok: true,
       systemStock: item.stock,
