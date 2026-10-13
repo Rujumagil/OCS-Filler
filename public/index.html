@@ -67,13 +67,22 @@
           <small id="updatedAt" class="updated-at">—</small>
         </div>
 
+        <button id="scanMovementBtn" class="scan-main-card" type="button">
+          <div class="scan-main-icon">▣</div>
+          <div class="scan-main-copy">
+            <span class="eyebrow">Movimiento rápido</span>
+            <strong>Escanear producto</strong>
+            <p>Escanea y elige Entrada o Salida.</p>
+          </div>
+          <div class="scan-main-arrow">›</div>
+        </button>
+
         <div class="search-wrap">
           <div class="search-field">
             <span class="search-icon">⌕</span>
-            <input id="searchInput" class="search-input" autocomplete="off" placeholder="Buscar por producto o código">
+            <input id="searchInput" class="search-input" autocomplete="off" placeholder="O buscar por producto o código">
             <button id="clearSearch" class="clear-search hidden" aria-label="Limpiar">×</button>
           </div>
-          <button id="scanQuickBtn" class="scan-quick" aria-label="Escanear código de barras"><span>▣</span><b>Escanear</b></button>
         </div>
 
         <section class="kpi-grid">
@@ -197,9 +206,12 @@
         </div>
       </div>
 
-      <div class="action-grid">
-        <button data-action="entry" class="action-card entry"><span>＋</span><b>Entrada</b><small>Recibir producto</small></button>
-        <button data-action="exit" class="action-card exit"><span>−</span><b>Salida</b><small>Surtir producto</small></button>
+      <div class="movement-question">¿Qué movimiento deseas registrar?</div>
+      <div class="action-grid primary-movements">
+        <button data-action="entry" class="action-card entry"><span>＋</span><b>Entrada</b><small>Agregar a existencia</small></button>
+        <button data-action="exit" class="action-card exit primary-exit"><span>−</span><b>Salida</b><small>Descontar existencia</small></button>
+      </div>
+      <div class="action-grid secondary-movements">
         <button data-action="count" class="action-card count"><span>✓</span><b>Conteo</b><small>Ajustar existencia</small></button>
         <button data-action="waste" class="action-card waste"><span>!</span><b>Merma</b><small>Registrar pérdida</small></button>
       </div>
