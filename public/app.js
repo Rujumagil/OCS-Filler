@@ -14,6 +14,8 @@ const state={
   scannerStream:null,
   scannerDetector:null,
   scannerTimer:null,
+  zxingReader:null,
+  zxingControls:null,
   scanBusy:false,
   scanMode:null,
   scannedBarcode:"",
@@ -174,12 +176,22 @@ function scannerModeCopy(mode){
 function stopScanner(clearMode=false){
   clearTimeout(state.scannerTimer);
   state.scannerTimer=null;
+
+  try{state.zxingControls?.stop?.();}catch(_){}
+  state.zxingControls=null;
+  state.zxingReader=null;
+
   if(state.scannerStream){
     state.scannerStream.getTracks().forEach(t=>t.stop());
     state.scannerStream=null;
   }
+
   const video=$("scannerVideo");
-  if(video)video.srcObject=null;
+  if(video?.srcObject){
+    try{video.srcObject.getTracks?.().forEach(t=>t.stop());}catch(_){}
+    video.srcObject=null;
+  }
+
   if(clearMode){
     state.scanMode=null;
     state.resumeScanner=false;
@@ -206,6 +218,7 @@ async function openScanner(mode=null){
 async function startScanner(){
   stopScanner(false);
   state.scanBusy=false;
+  state.scannerDetector=null;
 
   if(!navigator.mediaDevices?.getUserMedia){
     $("scannerStatus").textContent="Este navegador no permite usar la cámara. Puedes escribir el código manualmente.";
@@ -213,34 +226,67 @@ async function startScanner(){
     return;
   }
 
-  if(!("BarcodeDetector" in window)){
-    $("scannerStatus").textContent="La lectura automática no está disponible en este navegador. Usa el campo de código o un lector Bluetooth/USB.";
-    $("restartScannerBtn").classList.add("hidden");
-    return;
-  }
-
   try{
-    const supported=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
-    const preferred=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code","data_matrix"];
-    const formats=preferred.filter(x=>supported.includes(x));
-    state.scannerDetector=formats.length?new BarcodeDetector({formats}):new BarcodeDetector();
-
-    state.scannerStream=await navigator.mediaDevices.getUserMedia({
-      audio:false,
-      video:{
-        facingMode:{ideal:"environment"},
-        width:{ideal:1280},
-        height:{ideal:720}
-      }
-    });
-
     const video=$("scannerVideo");
-    video.srcObject=state.scannerStream;
-    await video.play();
-    $("scannerStatus").textContent="Listo. Centra el código dentro del recuadro.";
-    scanFrame();
+
+    if("BarcodeDetector" in window){
+      const supported=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+      const preferred=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code","data_matrix"];
+      const formats=preferred.filter(x=>supported.includes(x));
+      state.scannerDetector=formats.length?new BarcodeDetector({formats}):new BarcodeDetector();
+
+      state.scannerStream=await navigator.mediaDevices.getUserMedia({
+        audio:false,
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1280},
+          height:{ideal:720}
+        }
+      });
+
+      video.srcObject=state.scannerStream;
+      await video.play();
+      $("scannerStatus").textContent="Cámara activa. Centra el código dentro del recuadro.";
+      scanFrame();
+      return;
+    }
+
+    $("scannerStatus").textContent="Activando lector compatible con tu teléfono…";
+    const ZXing=await import("https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/+esm");
+    state.zxingReader=new ZXing.BrowserMultiFormatReader();
+
+    const controls=await state.zxingReader.decodeFromConstraints(
+      {
+        audio:false,
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1280},
+          height:{ideal:720}
+        }
+      },
+      video,
+      (result)=>{
+        if(!result||state.scanBusy)return;
+        const value=typeof result.getText==="function"?result.getText():result.text;
+        if(value)handleBarcode(value);
+      }
+    );
+
+    state.zxingControls=controls;
+    $("scannerStatus").textContent="Cámara activa. Centra el código dentro del recuadro.";
   }catch(e){
-    $("scannerStatus").textContent="No pudimos abrir la cámara. Revisa el permiso del navegador o escribe el código manualmente.";
+    console.error("Scanner error",e);
+    let message="No pudimos abrir la cámara.";
+    if(e?.name==="NotAllowedError"||e?.name==="PermissionDeniedError"){
+      message="El permiso de cámara está bloqueado. En el navegador, abre permisos del sitio y habilita Cámara.";
+    }else if(e?.name==="NotFoundError"||e?.name==="DevicesNotFoundError"){
+      message="No encontramos una cámara disponible en este dispositivo.";
+    }else if(e?.name==="NotReadableError"||e?.name==="TrackStartError"){
+      message="La cámara está siendo usada por otra aplicación. Ciérrala e intenta de nuevo.";
+    }else if(location.protocol!=="https:"&&location.hostname!=="localhost"){
+      message="La cámara requiere una conexión HTTPS.";
+    }
+    $("scannerStatus").textContent=message+" También puedes escribir el código manualmente.";
     $("restartScannerBtn").classList.remove("hidden");
   }
 }
