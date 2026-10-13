@@ -93,6 +93,7 @@ button{cursor:pointer}
 .manual-barcode>div{display:grid;grid-template-columns:1fr auto;gap:7px}
 .manual-barcode input,.barcode-link-panel input{width:100%;height:48px;border:1px solid var(--line);border-radius:13px;background:white;color:var(--ink);padding:0 12px;outline:none}
 .manual-barcode .btn{min-width:78px;padding:0 14px}
+.scanner-manual-search{margin-top:8px;padding:6px 0;text-align:left}
 .barcode-link-panel{margin-top:12px;border:1px solid #eadab8;background:#fff8ea;border-radius:17px;padding:12px}
 .barcode-link-panel h4{margin:5px 0 4px;font-size:1rem;letter-spacing:.02em}
 .barcode-link-panel p{margin:0 0 9px;color:#816b45;font-size:.59rem;line-height:1.45}
