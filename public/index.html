@@ -155,6 +155,18 @@
         <button id="scannerCloseBtn" class="close-btn" type="button">×</button>
       </header>
 
+      <div id="scanSessionBar" class="scan-session-bar hidden">
+        <div class="scan-session-head">
+          <div>
+            <span class="eyebrow">Sesión activa</span>
+            <strong id="scanSessionMode">—</strong>
+          </div>
+          <span id="scanSessionCount" class="scan-session-count">0 movimientos</span>
+        </div>
+        <input id="scanSessionLabel" autocomplete="off" placeholder="Manifiesto, remisión o destino (opcional)">
+        <button id="endScanSessionBtn" type="button" class="text-btn scan-session-end">Terminar sesión</button>
+      </div>
+
       <div class="scanner-stage">
         <video id="scannerVideo" playsinline muted></video>
         <div class="scanner-frame"><span></span></div>
