@@ -223,6 +223,7 @@
           <option value="produce">Frutas y verduras</option>
           <option value="weight">A granel / por peso</option>
           <option value="special">Proteínas / especiales</option>
+          <option value="unlocated">Sin ubicación asignada</option>
           <option value="all">Todos los productos</option>
         </select>
         <input id="qrLabelSearch" autocomplete="off" placeholder="Buscar producto o código">
@@ -260,6 +261,23 @@
         <div class="stock-meta">
           <span id="productMin">Mínimo —</span>
           <span id="productMax">Máximo —</span>
+        </div>
+      </div>
+
+      <div class="location-card">
+        <div class="location-card-head">
+          <div>
+            <span>Ubicación en almacén</span>
+            <strong id="productLocation">Sin ubicación</strong>
+          </div>
+          <button id="editLocationBtn" type="button" class="text-btn">Editar</button>
+        </div>
+        <div id="locationEditor" class="location-editor hidden">
+          <input id="locationInput" autocomplete="off" placeholder="Ej. Anaquel A2, Refrigerador 1, Frutas">
+          <div>
+            <button id="saveLocationBtn" type="button" class="btn btn-primary">Guardar ubicación</button>
+            <button id="cancelLocationBtn" type="button" class="text-btn">Cancelar</button>
+          </div>
         </div>
       </div>
 
