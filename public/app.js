@@ -130,7 +130,7 @@ async function api(path,options={}){
       unauthorized:"Sesión vencida.",
       google_credentials_missing:"Falta conectar Google Sheets en Cloudflare.",
       google_auth_failed:"No se pudo autenticar con Google.",
-      google_sheets_failed:"No se pudo leer el Control de Almacén.",
+      google_sheets_failed:"No se pudo actualizar el Control de Almacén. Intenta nuevamente.",
       item_not_found:"Producto no encontrado.",
       insufficient_stock:"La cantidad supera la existencia disponible.",
       movement_capacity_reached:"La bitácora llegó a su capacidad.",
