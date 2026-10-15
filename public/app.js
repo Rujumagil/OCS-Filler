@@ -26,7 +26,8 @@ const state={
   scanSessionCount:0,
   scanSessionLabel:"",
   qrLabelSelected:new Set(),
-  qrCodeModule:null
+  qrCodeModule:null,
+  reportType:"stock"
 };
 
 const $=id=>document.getElementById(id);
@@ -189,6 +190,7 @@ async function loadInventory(){
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
     renderProducts();
     updateWarehouseMapSummary();
+    updateReportsSummary();
     loadTodayDelivery();
   }catch(e){toast(e.message);}
 }
@@ -505,6 +507,185 @@ async function linkBarcodeToProduct(code){
   }catch(err){
     toast(err.code==="barcode_already_linked"?"Ese código ya está vinculado a otro producto.":err.message);
   }
+}
+
+function productsToOrder(){
+  return state.items
+    .filter(i=>Number(i.min||0)>0 && Number(i.stock||0)<=Number(i.min||0))
+    .map(i=>({
+      ...i,
+      orderQty:Math.max(Number(i.max||0)-Number(i.stock||0),0)
+    }))
+    .filter(i=>i.orderQty>0)
+    .sort((a,b)=>
+      String(a.family||"").localeCompare(String(b.family||""),"es")||
+      String(a.name||"").localeCompare(String(b.name||""),"es")
+    );
+}
+
+function updateReportsSummary(){
+  const need=productsToOrder().length;
+  $("reportsSummary").textContent=state.items.length+" productos · "+need+" por solicitar";
+}
+
+function reportDateTime(){
+  return new Date().toLocaleString("es-MX",{
+    dateStyle:"medium",
+    timeStyle:"short"
+  });
+}
+
+function stockReportRows(){
+  return [...state.items].sort((a,b)=>
+    String(a.family||"").localeCompare(String(b.family||""),"es")||
+    String(a.name||"").localeCompare(String(b.name||""),"es")
+  );
+}
+
+function reportRows(){
+  return state.reportType==="order"?productsToOrder():stockReportRows();
+}
+
+function reportColumns(){
+  if(state.reportType==="order"){
+    return [
+      ["Código",i=>i.code],
+      ["Producto",i=>i.name],
+      ["Familia",i=>i.family||""],
+      ["Unidad",i=>unit(i.unit)],
+      ["Existencia",i=>num(i.stock),"num"],
+      ["Mínimo",i=>num(i.min),"num"],
+      ["Máximo",i=>num(i.max),"num"],
+      ["Pedir",i=>num(i.orderQty),"num"]
+    ];
+  }
+  return [
+    ["Código",i=>i.code],
+    ["Producto",i=>i.name],
+    ["Familia",i=>i.family||""],
+    ["Unidad",i=>unit(i.unit)],
+    ["Existencia",i=>num(i.stock),"num"],
+    ["Mínimo",i=>num(i.min),"num"],
+    ["Máximo",i=>num(i.max),"num"],
+    ["Estado",i=>i.status||""],
+    ["Ubicación",i=>i.location||""]
+  ];
+}
+
+function setReportType(type){
+  state.reportType=type==="order"?"order":"stock";
+  $("stockReportBtn").classList.toggle("active",state.reportType==="stock");
+  $("orderReportBtn").classList.toggle("active",state.reportType==="order");
+  renderReport();
+}
+
+function renderReport(){
+  const rows=reportRows();
+  const cols=reportColumns();
+  const order=productsToOrder();
+
+  $("stockReportCount").textContent=state.items.length;
+  $("orderReportCount").textContent=order.length;
+
+  if(state.reportType==="order"){
+    $("reportEyebrow").textContent="Compras";
+    $("reportTitle").textContent="Pedido sugerido de almacén";
+    $("reportSubtitle").textContent=rows.length+" productos con existencia igual o menor al mínimo · "+reportDateTime();
+  }else{
+    $("reportEyebrow").textContent="Inventario";
+    $("reportTitle").textContent="Reporte de existencia en almacén";
+    $("reportSubtitle").textContent=rows.length+" productos · "+reportDateTime();
+  }
+
+  if(!rows.length){
+    $("reportPreview").innerHTML='<div class="report-empty">No hay productos para este reporte.</div>';
+    return;
+  }
+
+  $("reportPreview").innerHTML=`
+    <table class="report-table">
+      <thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join("")}</tr></thead>
+      <tbody>
+        ${rows.map(i=>`<tr>${cols.map(c=>`<td class="${c[2]||""}">${esc(c[1](i))}</td>`).join("")}</tr>`).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function openReports(){
+  $("stockReportCount").textContent=state.items.length;
+  $("orderReportCount").textContent=productsToOrder().length;
+  setReportType(state.reportType||"stock");
+  openSheet("reportsSheet");
+}
+
+function csvEscape(value){
+  const s=String(value??"");
+  return '"'+s.replaceAll('"','""')+'"';
+}
+
+function downloadCurrentReportCsv(){
+  const rows=reportRows();
+  const cols=reportColumns();
+  if(!rows.length){toast("No hay datos para descargar.");return;}
+
+  const lines=[
+    cols.map(c=>csvEscape(c[0])).join(","),
+    ...rows.map(i=>cols.map(c=>csvEscape(c[1](i))).join(","))
+  ];
+  const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=state.reportType==="order"?"pedido_sugerido_ocs.csv":"existencia_almacen_ocs.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function printCurrentReport(){
+  const rows=reportRows();
+  const cols=reportColumns();
+  if(!rows.length){toast("No hay datos para imprimir.");return;}
+
+  const title=state.reportType==="order"?"Pedido sugerido de almacén":"Existencia actual en almacén";
+  const note=state.reportType==="order"
+    ?"Incluye productos cuya existencia es igual o menor al mínimo configurado. La cantidad sugerida completa el inventario hasta el máximo."
+    :"Existencias actuales registradas en OCS Almacén Filler.";
+
+  $("reportPrintArea").innerHTML=`
+    <article class="report-print-doc">
+      <header class="report-print-header">
+        <div>
+          <div class="report-print-brand">OCS · ALMACÉN FILLER</div>
+          <h1>${esc(title)}</h1>
+          <p>${esc(note)}</p>
+        </div>
+        <div class="report-print-meta">
+          <b>${rows.length} productos</b><br>
+          ${esc(reportDateTime())}
+        </div>
+      </header>
+      <table class="report-print-table">
+        <thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map(i=>`<tr>${cols.map(c=>`<td class="${c[2]||""}">${esc(c[1](i))}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </article>
+  `;
+
+  document.body.classList.add("printing-report");
+  $("reportPrintArea").setAttribute("aria-hidden","false");
+
+  const cleanup=()=>{
+    document.body.classList.remove("printing-report");
+    $("reportPrintArea").setAttribute("aria-hidden","true");
+    window.removeEventListener("afterprint",cleanup);
+  };
+  window.addEventListener("afterprint",cleanup);
+  setTimeout(()=>window.print(),120);
 }
 
 function locatedItems(){
@@ -915,6 +1096,11 @@ $("refreshBtn").addEventListener("click",loadInventory);
 $("todayDeliveryCard").addEventListener("click",()=>{renderTodayDelivery();openSheet("deliverySheet");});
 $("qrLabelsCard").addEventListener("click",openQrLabels);
 $("warehouseMapCard").addEventListener("click",openWarehouseMap);
+$("reportsCard").addEventListener("click",openReports);
+$("stockReportBtn").addEventListener("click",()=>setReportType("stock"));
+$("orderReportBtn").addEventListener("click",()=>setReportType("order"));
+$("downloadReportCsvBtn").addEventListener("click",downloadCurrentReportCsv);
+$("printReportBtn").addEventListener("click",printCurrentReport);
 $("editLocationBtn").addEventListener("click",()=>{
   if(!state.selected)return;
   prepareLocationEditor(state.selected.location||"");
