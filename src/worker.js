@@ -527,6 +527,7 @@ async function handleApi(request, env, url) {
     return json({
       ok: true,
       service: "ocs-filler-almacen",
+      version: "2026-10-15-movement-fix-1",
       runtimeConfigured: Boolean(
         env.WAREHOUSE_PIN &&
         env.SESSION_SECRET &&
