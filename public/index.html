@@ -130,6 +130,16 @@
           <div class="warehouse-map-arrow">›</div>
         </button>
 
+        <button id="reportsCard" class="reports-card" type="button">
+          <div class="reports-icon">▤</div>
+          <div class="reports-copy">
+            <span class="eyebrow">Control y compras</span>
+            <strong>Reportes de almacén</strong>
+            <p id="reportsSummary">Existencias actuales y pedido sugerido.</p>
+          </div>
+          <div class="reports-arrow">›</div>
+        </button>
+
         <div class="section-head">
           <div>
             <h2 id="listTitle">Inventario</h2>
@@ -212,6 +222,48 @@
         <input id="linkProductSearch" autocomplete="off" placeholder="Buscar producto por nombre o código">
         <div id="linkProductResults" class="link-results"></div>
       </section>
+    </section>
+  </div>
+
+  <div id="reportsSheet" class="sheet-backdrop">
+    <section class="sheet reports-sheet">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Reportes</span>
+          <h3>Almacén y compras</h3>
+          <p>Genera el reporte que necesites con la información actual del inventario.</p>
+        </div>
+        <button class="close-btn" data-close="reportsSheet">×</button>
+      </header>
+
+      <div class="report-type-grid">
+        <button id="stockReportBtn" type="button" class="report-type-card active">
+          <span>Existencia</span>
+          <strong id="stockReportCount">0</strong>
+          <small>Productos en almacén</small>
+        </button>
+        <button id="orderReportBtn" type="button" class="report-type-card">
+          <span>Pedido</span>
+          <strong id="orderReportCount">0</strong>
+          <small>Productos por solicitar</small>
+        </button>
+      </div>
+
+      <div class="report-headline">
+        <div>
+          <span class="eyebrow" id="reportEyebrow">Existencia actual</span>
+          <h4 id="reportTitle">Reporte de existencia en almacén</h4>
+          <p id="reportSubtitle">—</p>
+        </div>
+      </div>
+
+      <div id="reportPreview" class="report-preview"></div>
+
+      <div class="report-actions">
+        <button id="downloadReportCsvBtn" type="button" class="btn btn-secondary">Descargar CSV</button>
+        <button id="printReportBtn" type="button" class="btn btn-primary">Imprimir / Guardar PDF</button>
+      </div>
     </section>
   </div>
 
@@ -419,6 +471,7 @@
   </div>
 
   <section id="labelPrintArea" class="label-print-area" aria-hidden="true"></section>
+  <section id="reportPrintArea" class="report-print-area" aria-hidden="true"></section>
 
   <div id="toast" class="toast"></div>
   <script src="/app.js"></script>
