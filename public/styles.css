@@ -292,3 +292,14 @@ button{cursor:pointer}
   .sheet{border-radius:28px}
   .bottom-nav{bottom:12px}
 }
+
+/* Caducidades y lotes · OCS Filler */
+.lot-fields{display:grid;gap:12px;border:1px solid var(--line);padding:14px;border-radius:16px;background:var(--green-soft);margin-top:10px}
+.lot-fields input{height:46px;padding:0 12px}
+.lot-fields small{color:var(--muted);font-size:.72rem;line-height:1.4}
+.lot-hint{margin:12px 0;padding:12px;border-radius:12px;background:var(--warn-bg);color:var(--warn);font-size:.78rem;line-height:1.4}
+.expiry-list{display:grid;gap:10px;margin-top:15px}
+.expiry-item{background:var(--paper);padding:13px;border:1px solid var(--line);border-radius:14px;font-size:.8rem}
+.expiry-item strong,.expiry-item small{display:block}
+.expiry-item small{color:var(--muted);margin:5px 0}
+.expiry-item b{color:var(--warn)}
