@@ -202,13 +202,15 @@ function inventoryItem(row) {
     waste: number(row[9]),
     stock,
     status,
-    suggested: max > 0 ? Math.max(max - stock, 0) : 0
+    suggested: max > 0 ? Math.max(max - stock, 0) : 0,
+    expiry: sheetDateKey(row[14]),
+    expiryStatus: String(row[16] || "")
   };
 }
 
 async function loadInventory(env) {
   const [rows, catalog] = await Promise.all([
-    getRange(env, "Inventario!A4:N1000"),
+    getRange(env, "Inventario!A4:Q1000"),
     getRange(env, "Catalogo!A5:L1000")
   ]);
 
@@ -225,6 +227,58 @@ async function loadInventory(env) {
       item.location = locations.get(item.code) || "";
       return item;
     });
+}
+
+
+function validExpiry(value) {
+  const s=String(value||"").trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+  const d=new Date(s+"T12:00:00Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s?s:"";
+}
+async function loadLots(env, code="") {
+  const rows=await getRange(env,"'Lotes Caducidad'!A2:K3000");
+  return rows.map((r,i)=>({
+    row:i+2,code:String(r[0]||""),name:String(r[1]||""),
+    lot:String(r[2]||""),expiry:sheetDateKey(r[3]),
+    received:number(r[4]),available:number(r[5]),
+    unit:String(r[6]||""),registered:String(r[7]||"")
+  })).filter(x=>x.code&&(!code||x.code===code)).sort((a,b)=>a.expiry.localeCompare(b.expiry));
+}
+async function saveLotReceipt(env,item,qty,lot,expiry,responsible){
+  if(!validExpiry(expiry))throw new Error("expiry_invalid");
+  if(!lot||lot.length>90)throw new Error("lot_required");
+  const rows=await loadLots(env);
+  const prior=rows.find(x=>x.code===item.code&&x.lot===lot&&x.expiry===expiry);
+  if(prior){
+    await batchUpdateRanges(env,[
+      {range:"'Lotes Caducidad'!E"+prior.row+":F"+prior.row,values:[[prior.received+qty,prior.available+qty]]},
+      {range:"'Lotes Caducidad'!J"+prior.row,values:[[mxDateTime()]]}
+    ]);
+    return;
+  }
+  const row=await firstBlankRow(env,"'Lotes Caducidad'!A2:A3000",2,2999);
+  await updateRange(env,"'Lotes Caducidad'!A"+row+":K"+row,[[
+    item.code,item.name,lot,expiry,qty,qty,item.unit,mxDateTime(),responsible,mxDateTime(),"ACTIVO"
+  ]]);
+}
+async function dispenseFEFO(env,item,qty) {
+  const lots=(await loadLots(env,item.code)).filter(x=>x.available>0);
+  let remaining=qty;
+  const updates=[];
+  const allocation=[];
+  for(const lot of lots){
+    if(remaining<=0)break;
+    const used=Math.min(lot.available,remaining);
+    if(used>0){
+      updates.push({range:"'Lotes Caducidad'!F"+lot.row,values:[[Number((lot.available-used).toFixed(6))]]});
+      updates.push({range:"'Lotes Caducidad'!J"+lot.row,values:[[mxDateTime()]]});
+      allocation.push({lot:lot.lot,expiry:lot.expiry,quantity:used});
+      remaining=Number((remaining-used).toFixed(6));
+    }
+  }
+  if(updates.length)await batchUpdateRanges(env,updates);
+  return {allocation,untracked:remaining};
 }
 
 function stats(items) {
@@ -560,6 +614,11 @@ async function handleApi(request, env, url) {
     return json({ ok: true, items, stats: stats(items), user: { name: session.name }, updatedAt: new Date().toISOString() });
   }
 
+  if (url.pathname === "/api/lots" && request.method === "GET") {
+    const code=String(url.searchParams.get("code")||"").trim();
+    return json({ok:true,lots:await loadLots(env,code)});
+  }
+
   if (url.pathname === "/api/history" && request.method === "GET") {
     return json({ ok: true, movements: await loadHistory(env) });
   }
@@ -597,6 +656,9 @@ async function handleApi(request, env, url) {
     const reason = String(body.reason || "").trim().slice(0, 250);
     const sessionId = String(body.sessionId || "").trim();
     const sessionLabel = String(body.sessionLabel || "").trim();
+    const lot=String(body.lot||"").trim();
+    const expiry=String(body.expiry||"").trim();
+    if(type==="entry"&&((lot&&!validExpiry(expiry))||(expiry&&!lot)))return json({ok:false,error:"lot_and_expiry_required"},400);
 
     if (!["entry", "exit", "waste"].includes(type)) return json({ ok: false, error: "invalid_type" }, 400);
     if (!code || qty <= 0) return json({ ok: false, error: "invalid_movement" }, 400);
@@ -612,8 +674,10 @@ async function handleApi(request, env, url) {
     if (type === "exit") await recordSurtido(env, item, "Salida", qty, trackedReason(reason || "Salida de almacén", sessionId, sessionLabel), session.name);
     if (type === "waste") await recordWaste(env, item, qty, trackedReason(reason || "Merma de almacén", sessionId, sessionLabel), session.name);
 
+    if(type==="entry"&&lot&&expiry)await saveLotReceipt(env,item,qty,lot,expiry,session.name);
+    const allocation=(type==="exit"||type==="waste")?await dispenseFEFO(env,item,qty):null;
     const expected = type === "entry" ? item.stock + qty : item.stock - qty;
-    return json({ ok: true, item: { ...item, stock: expected }, stockBefore: item.stock, stockAfter: expected });
+    return json({ ok: true, item: { ...item, stock: expected }, stockBefore: item.stock, stockAfter: expected,fefo:allocation });
   }
 
   if (url.pathname === "/api/count" && request.method === "POST") {
