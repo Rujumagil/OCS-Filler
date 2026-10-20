@@ -262,8 +262,9 @@ async function saveLotReceipt(env,item,qty,lot,expiry,responsible){
     item.code,item.name,lot,expiry,qty,qty,item.unit,mxDateTime(),responsible,mxDateTime(),"ACTIVO"
   ]]);
 }
-async function dispenseFEFO(env,item,qty) {
-  const lots=(await loadLots(env,item.code)).filter(x=>x.available>0);
+async function dispenseFEFO(env,item,qty,allowExpired=false) {
+  const today=mxDateKey();
+  const lots=(await loadLots(env,item.code)).filter(x=>x.available>0&&(allowExpired||x.expiry>=today));
   let remaining=qty;
   const updates=[];
   const allocation=[];
@@ -670,12 +671,19 @@ async function handleApi(request, env, url) {
       return json({ ok: false, error: "insufficient_stock", stock: item.stock, unit: item.unit }, 409);
     }
 
+    if (type === "exit") {
+      const allLots=(await loadLots(env,code)).filter(x=>x.available>0);
+      const trackedTotal=allLots.reduce((sum,x)=>sum+x.available,0);
+      const validTotal=allLots.filter(x=>x.expiry>=mxDateKey()).reduce((sum,x)=>sum+x.available,0);
+      const untracked=Math.max(0,item.stock-trackedTotal);
+      if(qty>validTotal+untracked+0.000001)return json({ok:false,error:"expired_lots_blocked",available:validTotal+untracked},409);
+    }
     if (type === "entry") await recordSurtido(env, item, "Entrada", qty, trackedReason(reason || "Entrada de almacén", sessionId, sessionLabel), session.name);
     if (type === "exit") await recordSurtido(env, item, "Salida", qty, trackedReason(reason || "Salida de almacén", sessionId, sessionLabel), session.name);
     if (type === "waste") await recordWaste(env, item, qty, trackedReason(reason || "Merma de almacén", sessionId, sessionLabel), session.name);
 
     if(type==="entry"&&lot&&expiry)await saveLotReceipt(env,item,qty,lot,expiry,session.name);
-    const allocation=(type==="exit"||type==="waste")?await dispenseFEFO(env,item,qty):null;
+    const allocation=(type==="exit"||type==="waste")?await dispenseFEFO(env,item,qty,type==="waste"):null;
     const expected = type === "entry" ? item.stock + qty : item.stock - qty;
     return json({ ok: true, item: { ...item, stock: expected }, stockBefore: item.stock, stockAfter: expected,fefo:allocation });
   }
