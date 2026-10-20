@@ -189,6 +189,7 @@ async function loadInventory(){
     $("zeroCount").textContent=state.stats.zero||0;
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
     renderProducts();
+    loadExpiryAlerts();
     updateWarehouseMapSummary();
     updateReportsSummary();
     loadTodayDelivery();
@@ -1018,6 +1019,32 @@ async function saveSelectedLocation(){
   }
 }
 
+
+async function loadExpiryAlerts(){
+  try{
+    const data=await api("/api/lots");
+    const lots=(data.lots||[]).filter(l=>l.available>0&&l.expiry);
+    const today=new Date();today.setHours(0,0,0,0);
+    const days=iso=>Math.round((new Date(iso+"T00:00:00").getTime()-today.getTime())/86400000);
+    const danger=lots.filter(l=>days(l.expiry)<=30).sort((a,b)=>a.expiry.localeCompare(b.expiry));
+    state.expiryLots=lots;
+    $("expirySummary").textContent=danger.length?danger.length+" lote(s) vencidos o por vencer en 30 días":"Sin lotes con vencimiento en 30 días · revisar fechas pendientes";
+    $("expiryList").innerHTML=lots.length?lots.sort((a,b)=>a.expiry.localeCompare(b.expiry)).map(l=>{
+      const d=days(l.expiry),label=d<0?"CADUCADO":d<=7?"URGENTE":d<=30?"PRÓXIMO":"VIGENTE";
+      return '<article class="expiry-item"><strong>'+esc(l.name)+'</strong><small>Lote '+esc(l.lot)+' · '+esc(l.code)+'</small><div>Caduca '+esc(l.expiry)+' · '+num(l.available)+' '+esc(l.unit)+' · <b>'+label+(d>=0?" · "+d+" días":"")+'</b></div></article>';
+    }).join(""):'<p class="empty-state">Sin lotes con fecha de caducidad capturada. Registra lote y fecha al recibir mercancía.</p>';
+  }catch(e){$("expirySummary").textContent="No se pudieron consultar los lotes.";}
+}
+async function showFEFOForItem(code){
+  try{
+    const d=await api("/api/lots?code="+encodeURIComponent(code));
+    const lots=(d.lots||[]).filter(l=>l.available>0);
+    $("lotExitHint").textContent=lots.length
+      ?"FEFO: primero "+lots[0].lot+" (caduca "+lots[0].expiry+"). Se descontarán primero las unidades del lote con fecha más próxima."
+      :"Sin lotes registrados. La salida seguirá descontándose del inventario general.";
+  }catch(e){$("lotExitHint").textContent="No fue posible consultar los lotes FEFO.";}
+}
+
 function openMovement(mode){
   const item=state.selected;
   if(!item){toast("Selecciona un producto.");return;}
@@ -1045,6 +1072,11 @@ function openMovement(mode){
   $("saveMovementBtn").textContent=config.button;
   $("quantityInput").value="";
   $("notesInput").value="";
+  $("lotInput").value="";
+  $("expiryInput").value="";
+  $("lotEntryFields").classList.toggle("hidden",mode!=="entry");
+  $("lotExitHint").classList.toggle("hidden",mode!=="exit"&&mode!=="waste");
+  if(mode==="exit"||mode==="waste")showFEFOForItem(item.code);
   $("countPreview").classList.add("hidden");
   $("countPreview").classList.remove("negative");
   openSheet("movementSheet");
@@ -1208,6 +1240,9 @@ $("movementForm").addEventListener("submit",async e=>{
   if(!state.selected)return;
   const quantity=Number($("quantityInput").value);
   const notes=$("notesInput").value.trim();
+  const lot=state.currentMode==="entry"?$("lotInput").value.trim():"";
+  const expiry=state.currentMode==="entry"?$("expiryInput").value:"";
+  if(state.currentMode==="entry"&&Boolean(lot)!==Boolean(expiry)){toast("Captura juntos el lote y la fecha de caducidad.");return;}
   if(!Number.isFinite(quantity)||(state.currentMode==="count"?quantity<0:quantity<=0)){toast("Captura una cantidad válida.");return;}
   if((state.currentMode==="exit"||state.currentMode==="waste")&&quantity>state.selected.stock){
     toast("Solo hay "+num(state.selected.stock)+" "+unit(state.selected.unit)+" disponibles.");
@@ -1231,6 +1266,7 @@ $("movementForm").addEventListener("submit",async e=>{
         type:state.currentMode,
         quantity,
         reason:notes,
+        lot,expiry,
         sessionId:state.scanSessionId,
         sessionLabel:state.scanSessionLabel
       })});
@@ -1249,6 +1285,8 @@ $("movementForm").addEventListener("submit",async e=>{
   }catch(err){toast(err.message);}
   finally{$("saveMovementBtn").disabled=false;}
 });
+
+$("expiryCard").addEventListener("click",()=>{loadExpiryAlerts();openSheet("expirySheet");});
 
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
 
