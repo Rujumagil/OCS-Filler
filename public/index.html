@@ -100,6 +100,8 @@
           </button>
         </section>
 
+        <button id="expiryCard" class="delivery-card" type="button"><div class="delivery-icon">⌛</div><div class="delivery-copy"><span class="eyebrow">Rotación FEFO</span><strong>Caducidades y lotes</strong><p id="expirySummary">Consultar vencimientos de productos…</p></div><div class="delivery-arrow">›</div></button>
+
         <button id="todayDeliveryCard" class="delivery-card">
           <div class="delivery-icon">↓</div>
           <div class="delivery-copy">
@@ -429,6 +431,8 @@
         </label>
 
         <div id="countPreview" class="count-preview hidden"></div>
+        <div id="lotEntryFields" class="lot-fields hidden"><label><span>Número de lote (al recibir)</span><input id="lotInput" maxlength="90" placeholder="Ej. LOTE-20261020"></label><label><span>Fecha de caducidad</span><input type="date" id="expiryInput"></label><small>Para productos con caducidad, captura ambos campos según la etiqueta. No se generan fechas automáticamente.</small></div>
+        <div id="lotExitHint" class="lot-hint hidden"></div>
 
         <label>
           <span>Nota <small>opcional</small></span>
@@ -439,6 +443,8 @@
       </form>
     </section>
   </div>
+
+  <div id="expirySheet" class="sheet-backdrop"><section class="sheet"><div class="sheet-handle"></div><header class="sheet-head"><div><span class="eyebrow">Caducidades</span><h3>Vencimientos y lotes FEFO</h3><p>Revisar primero los lotes que caducan antes.</p></div><button class="close-btn" data-close="expirySheet">×</button></header><div id="expiryList" class="expiry-list"></div></section></div>
 
   <div id="deliverySheet" class="sheet-backdrop">
     <section class="sheet delivery-sheet">
