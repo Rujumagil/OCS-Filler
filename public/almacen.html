@@ -64,6 +64,60 @@
         <a href="/recetario.html" class="ocs-area-link"><span>▤</span><span><strong>Recetario</strong><small>Próximamente</small></span></a>
       </div>
       <section class="ocs-area-intro"><a href="/" class="ocs-back-home">← Inicio OCS</a><span class="eyebrow">OCS Filler · Control operativo</span><h2>Dashboard de almacén</h2><p>Existencias, niveles mínimos, caducidades, entradas, salidas y pedidos a proveedor.</p></section>
+            <div class="ocs-workspace">
+        <aside id="ocsSideNav" class="ocs-sidebar" aria-label="Accesos rápidos del almacén">
+          <div class="ocs-sidebar-heading"><div><span class="eyebrow">Navegación rápida</span><strong>Herramientas OCS</strong></div><button type="button" id="ocsSidebarToggle" class="ocs-sidebar-toggle" aria-controls="ocsSidebarMenu" aria-expanded="false">☰ Menú</button></div>
+          <div id="ocsSidebarMenu" class="ocs-sidebar-menu">
+        <button id="expiryCard" class="delivery-card" type="button"><div class="delivery-icon">⌛</div><div class="delivery-copy"><span class="eyebrow">Rotación FEFO</span><strong>Caducidades y lotes</strong><p id="expirySummary">Consultar vencimientos de productos…</p></div><div class="delivery-arrow">›</div></button>
+
+        <button id="todayDeliveryCard" class="delivery-card">
+          <div class="delivery-icon">↓</div>
+          <div class="delivery-copy">
+            <span class="eyebrow">Recepción del día</span>
+            <strong>Entrega de hoy</strong>
+            <p id="todayDeliverySummary">Consultando entradas…</p>
+          </div>
+          <div class="delivery-arrow">›</div>
+        </button>
+
+        <button id="qrLabelsCard" class="qr-labels-card" type="button">
+          <div class="qr-labels-icon">QR</div>
+          <div class="qr-labels-copy">
+            <span class="eyebrow">Identificación interna</span>
+            <strong>Etiquetas QR OCS</strong>
+            <p>Frutas, productos a granel y artículos sin código comercial.</p>
+          </div>
+          <div class="qr-labels-arrow">›</div>
+        </button>
+
+        <button id="warehouseMapCard" class="warehouse-map-card" type="button">
+          <div class="warehouse-map-icon">⌖</div>
+          <div class="warehouse-map-copy">
+            <span class="eyebrow">Organización física</span>
+            <strong>Mapa de ubicaciones</strong>
+            <p id="warehouseMapSummary">Organiza productos por zona, mueble y nivel.</p>
+          </div>
+          <div class="warehouse-map-arrow">›</div>
+        </button>
+
+        <a href="/ventas.html" class="reports-card" style="display:grid;text-decoration:none;color:inherit;margin-bottom:9px"><div class="reports-icon">▥</div><div class="reports-copy"><span class="eyebrow">Indicadores comerciales</span><strong>Dashboard de ventas y KPI</strong><p>Ventas diarias, semanas laborales, productos y tickets.</p></div><div class="reports-arrow">›</div></a>
+
+        <button id="reportsCard" class="reports-card" type="button">
+          <div class="reports-icon">▤</div>
+          <div class="reports-copy">
+            <span class="eyebrow">Control y compras</span>
+            <strong>Reportes de almacén</strong>
+            <p id="reportsSummary">Existencias actuales y pedido sugerido.</p>
+          </div>
+          <div class="reports-arrow">›</div>
+        </button>
+
+
+            <a class="ocs-sidebar-extra" href="/recetario.html"><span>▤</span> Recetario <b>›</b></a>
+            <a class="ocs-sidebar-extra" href="/consultas.html"><span>✧</span> Consultas inteligentes <b>›</b></a>
+          </div>
+        </aside>
+        <div class="ocs-workspace-content">
       <section id="homeView">
         <div class="hero-row">
           <div>
@@ -130,50 +184,6 @@
           </button>
         </section>
 
-        <button id="expiryCard" class="delivery-card" type="button"><div class="delivery-icon">⌛</div><div class="delivery-copy"><span class="eyebrow">Rotación FEFO</span><strong>Caducidades y lotes</strong><p id="expirySummary">Consultar vencimientos de productos…</p></div><div class="delivery-arrow">›</div></button>
-
-        <button id="todayDeliveryCard" class="delivery-card">
-          <div class="delivery-icon">↓</div>
-          <div class="delivery-copy">
-            <span class="eyebrow">Recepción del día</span>
-            <strong>Entrega de hoy</strong>
-            <p id="todayDeliverySummary">Consultando entradas…</p>
-          </div>
-          <div class="delivery-arrow">›</div>
-        </button>
-
-        <button id="qrLabelsCard" class="qr-labels-card" type="button">
-          <div class="qr-labels-icon">QR</div>
-          <div class="qr-labels-copy">
-            <span class="eyebrow">Identificación interna</span>
-            <strong>Etiquetas QR OCS</strong>
-            <p>Frutas, productos a granel y artículos sin código comercial.</p>
-          </div>
-          <div class="qr-labels-arrow">›</div>
-        </button>
-
-        <button id="warehouseMapCard" class="warehouse-map-card" type="button">
-          <div class="warehouse-map-icon">⌖</div>
-          <div class="warehouse-map-copy">
-            <span class="eyebrow">Organización física</span>
-            <strong>Mapa de ubicaciones</strong>
-            <p id="warehouseMapSummary">Organiza productos por zona, mueble y nivel.</p>
-          </div>
-          <div class="warehouse-map-arrow">›</div>
-        </button>
-
-        <a href="/ventas.html" class="reports-card" style="display:grid;text-decoration:none;color:inherit;margin-bottom:9px"><div class="reports-icon">▥</div><div class="reports-copy"><span class="eyebrow">Indicadores comerciales</span><strong>Dashboard de ventas y KPI</strong><p>Ventas diarias, semanas laborales, productos y tickets.</p></div><div class="reports-arrow">›</div></a>
-
-        <button id="reportsCard" class="reports-card" type="button">
-          <div class="reports-icon">▤</div>
-          <div class="reports-copy">
-            <span class="eyebrow">Control y compras</span>
-            <strong>Reportes de almacén</strong>
-            <p id="reportsSummary">Existencias actuales y pedido sugerido.</p>
-          </div>
-          <div class="reports-arrow">›</div>
-        </button>
-
         <div id="productResultsArea" class="ocs-hidden-products hidden"><div class="section-head">
           <div>
             <h2 id="listTitle">Inventario</h2>
@@ -196,6 +206,8 @@
         </div>
         <div id="historyList" class="history-list"></div>
       </section>
+        </div>
+      </div>
     </main>
 
     <nav class="bottom-nav">
@@ -512,6 +524,7 @@
   <section id="reportPrintArea" class="report-print-area" aria-hidden="true"></section>
 
   <div id="toast" class="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="/costos.js"></script><script src="/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="/costos.js"></script><script src="/sidebar.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
