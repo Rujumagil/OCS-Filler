@@ -83,6 +83,17 @@ function messageToChat(type,text){
   div.textContent=text;
   $("flyConversation").appendChild(div);$("flyConversation").scrollTop=$("flyConversation").scrollHeight;
 }
+async function updateFlyStatus(){
+  const label=$("flyStatus");if(!label)return;
+  try{
+    const r=await fetch("/api/health",{cache:"no-store"});
+    if(!r.ok)throw Error("Health unavailable");
+    const info=await r.json();
+    if(!info.flyOpsCodeReady){label.textContent="El agente aún no se ha publicado en Cloudflare; utiliza los reportes directos mientras tanto.";return;}
+    if(!info.flyOpsAIConfigured){label.textContent="El agente está publicado, pero falta configurar GEMINI_API_KEY en el Worker de OCS Filler.";return;}
+    label.textContent="IA configurada · inicia sesión en Almacén con tu PIN para conversar con datos protegidos.";
+  }catch(_){label.textContent="No fue posible comprobar el servicio de IA; los reportes directos están disponibles.";}
+}
 function agentContext(){
   const imported=detailAvailable();
   const aggregated=imported?Object.values(raw.reduce((acc,r)=>{
@@ -138,6 +149,7 @@ $("flySend").addEventListener("click",sendFlyQuestion);
 $("flyQuestion").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendFlyQuestion();}});
 
 status();
+updateFlyStatus();
 if(sessionStorage.getItem("ocs_filler_warehouse_token")||localStorage.getItem("ocs_filler_warehouse_token"))warehouseRefresh();
 else $("operationalStatus").textContent="Accede a Almacén con tu PIN para habilitar consultas de existencias. Las recetas se leen en este navegador.";
 })();
