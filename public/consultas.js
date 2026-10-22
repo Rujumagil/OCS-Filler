@@ -76,6 +76,61 @@ $("sourceFile").addEventListener("change",async e=>{let f=e.target.files[0];if(!
 if(!records.length)throw Error("No encontré columnas válidas de fecha, descripción y cantidad.");raw=records;try{localStorage.setItem(KEY,JSON.stringify(raw))}catch(_){$("dataStatus").textContent="Se cargó el archivo, pero el almacenamiento del navegador está lleno.";}status();$("reportMessage").textContent="Movimientos cargados. Ya puedes generar consultas detalladas."; $("reportTable").innerHTML="";$("reportChart").innerHTML="";}
 catch(err){$("dataStatus").textContent="No se pudo importar: "+err.message}finally{e.target.value=""}});
 $("downloadCsv").addEventListener("click",()=>{if(!report?.rows?.length)return;let csv=[report.cols,...report.rows].map(row=>row.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(",")).join("\r\n"),blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="OCS_consulta_"+new Date().toISOString().slice(0,10)+".csv";a.click();URL.revokeObjectURL(url)});
+
+function messageToChat(type,text){
+  const div=document.createElement("div");
+  div.style.cssText="padding:12px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;max-width:95%;"+(type==="user"?"background:#173b2c;color:#fff;justify-self:end":"background:#edf4ee;color:#173b2c;justify-self:start");
+  div.textContent=text;
+  $("flyConversation").appendChild(div);$("flyConversation").scrollTop=$("flyConversation").scrollHeight;
+}
+function agentContext(){
+  const imported=detailAvailable();
+  const aggregated=imported?Object.values(raw.reduce((acc,r)=>{
+    const code=String(r.code||r.name||"");
+    if(!acc[code])acc[code]={code,name:r.name,qty:0,amount:0};
+    acc[code].qty+=qtyValue(r);acc[code].amount+=moneyValue(r);
+    return acc;
+  },{})):[...products];
+  const byDate=imported?Object.values(raw.reduce((acc,r)=>{
+    if(!acc[r.date])acc[r.date]={date:r.date,qty:0,amount:0};
+    acc[r.date].qty+=qtyValue(r);acc[r.date].amount+=moneyValue(r);
+    return acc;
+  },{})).sort((a,b)=>a.date.localeCompare(b.date)):daily;
+  const local=recipesLocal();
+  return {
+    daily:byDate,products:aggregated,recipes:local,
+    salesCoverage:imported?"Movimientos por producto y día importados en este navegador; consultar detalles por fecha mediante reportes locales.":"Solo resumen de venta total por día y resumen por producto para todo octubre 1–21; NO hay desglose producto por día.",
+    recipeCoverage:"Recetas almacenadas únicamente en este navegador: "+local.length
+  };
+}
+async function sendFlyQuestion(){
+  const question=$("flyQuestion").value.trim();
+  if(!question)return;
+  const token=sessionStorage.getItem("ocs_filler_warehouse_token")||localStorage.getItem("ocs_filler_warehouse_token")||"";
+  messageToChat("user",question);$("flyQuestion").value="";
+  if(!token){
+    messageToChat("assistant","Para consultar el agente con existencias reales es necesario iniciar sesión en Almacén con tu usuario y PIN. Después regresa a Consultas. Mientras tanto puedes utilizar los reportes directos disponibles debajo.");
+    return;
+  }
+  $("flySend").disabled=true;$("flyStatus").textContent="Consultando información OCS…";
+  try{
+    const response=await fetch("/api/assistant",{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+token},body:JSON.stringify({question,context:agentContext()})});
+    const result=await response.json();
+    if(!response.ok||!result.ok){
+      if(result.error==="ai_not_configured")throw Error("El servicio conversacional todavía no está activado. Falta configurar GEMINI_API_KEY como secreto del Worker OCS Filler; los reportes directos continúan disponibles.");
+      if(response.status===401)throw Error("Tu sesión de Almacén caducó. Vuelve a iniciar sesión para consultar datos protegidos.");
+      throw Error(result.message||"No fue posible responder. Prueba los reportes directos.");
+    }
+    messageToChat("assistant",result.answer+"\n\nFuente: "+result.source+".");
+    $("flyStatus").textContent="Respuesta basada en las fuentes disponibles de OCS.";
+  }catch(error){
+    messageToChat("assistant",String(error.message||"No fue posible conectar con el agente."));
+    $("flyStatus").textContent="No se completó la consulta.";
+  }finally{$("flySend").disabled=false;}
+}
+$("flySend").addEventListener("click",sendFlyQuestion);
+$("flyQuestion").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendFlyQuestion();}});
+
 status();
 if(sessionStorage.getItem("ocs_filler_warehouse_token")||localStorage.getItem("ocs_filler_warehouse_token"))warehouseRefresh();
 else $("operationalStatus").textContent="Accede a Almacén con tu PIN para habilitar consultas de existencias. Las recetas se leen en este navegador.";
