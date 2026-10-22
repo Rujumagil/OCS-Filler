@@ -189,9 +189,8 @@ async function loadInventory(){
     $("zeroCount").textContent=state.stats.zero||0;
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
     const orderItems=state.items.filter(i=>Number(i.min)>0&&Number(i.stock)<=Number(i.min));
-    const qtyToOrder=orderItems.reduce((sum,i)=>sum+Math.max(0,Number(i.suggested)||0),0);
     $("stockOrderProducts").textContent=num(orderItems.length);
-    $("stockOrderUnits").textContent=num(qtyToOrder)+" unidades sugeridas (diferentes unidades de medida; revisar pedido)";
+    $("stockOrderUnits").textContent="Consulta el reporte de pedido para cantidades y unidades";
     $("stockOutProducts").textContent=num(state.items.filter(i=>Number(i.stock)===0).length);
     $("stockSummaryCount").textContent=num(state.items.length)+" referencias en inventario";
     // El inventario aún no incluye costos unitarios auditados: nunca inferir valores monetarios.
@@ -1125,7 +1124,17 @@ $("toggleProductSearch").addEventListener("click",()=>{
   $("productResultsArea").classList.toggle("hidden",hidden);
   if(!hidden){renderProducts();$("searchInput").focus();}
 });
-document.querySelectorAll("[data-quick-mode]").forEach(b=>b.addEventListener("click",()=>openScanner(b.dataset.quickMode)));
+document.querySelectorAll("[data-quick-mode]").forEach(b=>b.addEventListener("click",()=>{
+  const mode=b.dataset.quickMode;
+  if(mode==="waste"){
+    state.pendingMode="waste";
+    $("productSearchArea").classList.remove("hidden");
+    $("productResultsArea").classList.remove("hidden");
+    renderProducts();
+    $("searchInput").focus();
+    toast("Busca el producto para registrar la merma.");
+  }else openScanner(mode);
+}));
 $("loginForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const name=$("nameInput").value.trim();
