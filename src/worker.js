@@ -702,6 +702,11 @@ async function handleApi(request, env, url) {
       if(Math.abs(amount)>1e8)return json({ok:false,error:"invalid_sales_amount"},400);
       records.push({sale_date:date,rows:safe,units,amount,detail_level:"detail",source_filename:file,updated_at:new Date().toISOString(),updated_by:session.name});
     }
+    // A replacement Arrow file must never erase tickets captured separately.
+    const earliest=records.map(r=>r.sale_date).sort()[0],latest=records.map(r=>r.sale_date).sort().at(-1);
+    const previous=await salesSupabase(env,"GET","ocs_filler_sales_days?select=sale_date,tickets&sale_date=gte."+earliest+"&sale_date=lte."+latest+"&limit=31");
+    const savedTickets=new Map(previous.map(r=>[r.sale_date,r.tickets]));
+    records.forEach(r=>{if(savedTickets.has(r.sale_date))r.tickets=savedTickets.get(r.sale_date)});
     const result=await salesSupabase(env,"POST","ocs_filler_sales_days?on_conflict=sale_date",records);
     return json({ok:true,updated:records.length,dates:records.map(r=>r.sale_date),amount:records.reduce((s,r)=>s+r.amount,0),source:"supabase"});
   }
