@@ -1,5 +1,5 @@
-const CACHE="ocs-filler-almacen-v14";
-const ASSETS=["/","/index.html","/styles.css","/app.js","/manifest.webmanifest"];
+const CACHE="ocs-filler-areas-v15";
+const ASSETS=["/","/index.html","/almacen.html","/ventas.html","/recetario.html","/styles.css","/app.js","/manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
