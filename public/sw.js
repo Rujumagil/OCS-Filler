@@ -1,4 +1,4 @@
-const CACHE="ocs-filler-areas-v28";
+const CACHE="ocs-filler-areas-v29";
 const ASSETS=["/","/index.html","/almacen.html","/costos.js","/ventas.html","/recetario.html","/recetario.js","/consultas.html","/consultas.js","/ventas-historico-2026-10.js","/ventas-graficos.js","/styles.css","/app.js","/sidebar.js","/manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
