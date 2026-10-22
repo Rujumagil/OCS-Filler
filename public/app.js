@@ -181,6 +181,8 @@ async function loadInventory(){
   try{
     const data=await api("/api/inventory");
     state.items=data.items||[];
+    window.OCSWarehouseItems=state.items;
+    window.OCSCosts?.render(state.items);
     state.stats=data.stats||{};
     if(data.user?.name){state.name=data.user.name;localStorage.setItem(NAME_KEY,state.name);}
     $("userName").textContent=state.name||"Almacenista";
