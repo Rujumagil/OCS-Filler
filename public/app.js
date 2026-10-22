@@ -188,6 +188,16 @@ async function loadInventory(){
     $("orderCount").textContent=state.stats.needOrder||0;
     $("zeroCount").textContent=state.stats.zero||0;
     $("updatedAt").textContent="Actualizado "+new Date(data.updatedAt||Date.now()).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+    const orderItems=state.items.filter(i=>Number(i.min)>0&&Number(i.stock)<=Number(i.min));
+    const qtyToOrder=orderItems.reduce((sum,i)=>sum+Math.max(0,Number(i.suggested)||0),0);
+    $("stockOrderProducts").textContent=num(orderItems.length);
+    $("stockOrderUnits").textContent=num(qtyToOrder)+" unidades sugeridas (diferentes unidades de medida; revisar pedido)";
+    $("stockOutProducts").textContent=num(state.items.filter(i=>Number(i.stock)===0).length);
+    $("stockSummaryCount").textContent=num(state.items.length)+" referencias en inventario";
+    // El inventario aún no incluye costos unitarios auditados: nunca inferir valores monetarios.
+    $("stockValue").textContent="Sin costos";
+    $("stockSpend").textContent="Sin costos";
+
     renderProducts();
     loadExpiryAlerts();
     updateWarehouseMapSummary();
@@ -1110,6 +1120,12 @@ async function loadHistory(){
   }catch(e){$("historyList").innerHTML='<div class="empty-state">'+esc(e.message)+'</div>';}
 }
 
+$("toggleProductSearch").addEventListener("click",()=>{
+  const hidden=$("productSearchArea").classList.toggle("hidden");
+  $("productResultsArea").classList.toggle("hidden",hidden);
+  if(!hidden){renderProducts();$("searchInput").focus();}
+});
+document.querySelectorAll("[data-quick-mode]").forEach(b=>b.addEventListener("click",()=>openScanner(b.dataset.quickMode)));
 $("loginForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const name=$("nameInput").value.trim();
