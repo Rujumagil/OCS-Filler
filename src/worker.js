@@ -681,7 +681,7 @@ async function handleApi(request, env, url) {
     if(!salesSupabaseConfig(env))return json({ok:false,error:"supabase_sales_not_configured"},503);
     const month=String(url.searchParams.get("month")||"2026-10");
     if(!/^\d{4}-\d{2}$/.test(month))return json({ok:false,error:"invalid_month"},400);
-    const from=month+"-01",to=month+"-31";
+    const from=month+"-01",to=month+"-"+String(new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate()).padStart(2,"0");
     const rows=await salesSupabase(env,"GET","ocs_filler_sales_days?select=sale_date,rows,units,amount,tickets,detail_level,updated_at&sale_date=gte."+from+"&sale_date=lte."+to+"&order=sale_date.asc&limit=31");
     return json({ok:true,days:rows,source:"supabase"});
   }
