@@ -313,3 +313,20 @@ button{cursor:pointer}
 .ocs-area-link.active{background:var(--green);border-color:var(--green);color:#fff}.ocs-area-link.active>span:first-child,.ocs-area-link.active small{color:#d8e9de}
 .ocs-area-intro{padding:6px 3px 14px}.ocs-area-intro h2{margin:5px 0;font-size:1.18rem}.ocs-area-intro p{margin:0;color:var(--muted);font-size:.66rem;line-height:1.5}
 @media(max-width:430px){.ocs-area-link{flex-direction:column;align-items:flex-start;gap:4px;padding:10px 7px}.ocs-area-link strong{font-size:.69rem}.ocs-area-link small{font-size:.47rem}}
+
+
+/* Dashboard ejecutivo del almacén */
+.ocs-back-home{display:inline-block;font-size:.64rem;font-weight:900;color:var(--green-2);text-decoration:none;margin:0 0 8px}
+.ocs-finance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 18px}
+.ocs-finance-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:15px;min-width:0}
+.ocs-finance-card span{display:block;color:var(--muted);font-size:.62rem;font-weight:850}
+.ocs-finance-card strong{display:block;font-size:1.5rem;letter-spacing:-.025em;margin:7px 0 3px;overflow-wrap:anywhere}
+.ocs-finance-card small{display:block;font-size:.55rem;color:var(--muted);line-height:1.45}
+.ocs-quick-title{font-size:1rem;margin:10px 2px}
+.ocs-quick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:11px}
+.ocs-quick-grid button{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:14px;text-align:left;color:var(--green-2);font-size:1.3rem}
+.ocs-quick-grid button strong{display:block;color:var(--ink);font-size:.74rem;margin-top:5px}
+.ocs-edit-product{display:flex;align-items:center;justify-content:space-between;width:100%;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--green-2);font-weight:850;text-align:left;padding:14px;margin-bottom:12px;font-size:.78rem}
+.ocs-edit-product span{font-size:1.3rem}
+.ocs-hidden-products{margin:10px 0 16px}
+@media(min-width:640px){.ocs-finance-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ocs-quick-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
