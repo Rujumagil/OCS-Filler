@@ -582,7 +582,9 @@ async function handleApi(request, env, url) {
     return json({
       ok: true,
       service: "ocs-filler-almacen",
-      version: "2026-10-15-movement-fix-1",
+      version: "2026-10-22-fly-ops",
+      flyOpsCodeReady: true,
+      flyOpsAIConfigured: Boolean(env.GEMINI_API_KEY),
       runtimeConfigured: Boolean(
         env.WAREHOUSE_PIN &&
         env.SESSION_SECRET &&
