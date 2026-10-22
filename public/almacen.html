@@ -79,6 +79,14 @@
           <div class="ocs-finance-card"><span>Productos por pedir</span><strong id="stockOrderProducts">—</strong><small id="stockOrderUnits">Productos debajo del mínimo</small></div>
           <div class="ocs-finance-card"><span>Unidades agotadas / artículos sin existencia</span><strong id="stockOutProducts">—</strong><small id="stockSummaryCount">Resumen general</small></div>
         </section>
+        <section class="ocs-cost-import" aria-label="Costos de proveedor">
+          <h2>Costos de insumos · 19 octubre 2026</h2>
+          <p>Importa los catálogos de Abarrotes y Perecederos para valorar solo los productos identificados con unidades compatibles. El stock de esos archivos no sustituye el inventario de Filler.</p>
+          <div class="ocs-cost-files"><label>Abarrotes<input type="file" id="costAbarrotes" accept=".xlsx,.xls,.csv"></label><label>Perecederos<input type="file" id="costPerecederos" accept=".xlsx,.xls,.csv"></label></div>
+          <div class="ocs-cost-actions"><button type="button" id="applyCostsBtn">Aplicar costos</button><span id="costCoverage">Aún no se importan costos en este navegador.</span></div>
+          <div class="ocs-cost-grid"><div><span>Inventario con costo validado</span><strong id="costMatchedValue">—</strong></div><div><span>Pedido estimado con costo</span><strong id="costOrderValue">—</strong></div><div><span>Productos sin costo conciliado</span><strong id="costPending">—</strong></div></div>
+          <small>El valor total del almacén y el gasto acumulado permanecerán pendientes cuando falten costos. No se utilizan precios de venta para valorizar existencias.</small>
+        </section>
         <h2 class="ocs-quick-title">Movimientos rápidos</h2>
         <div class="ocs-quick-grid">
           <button type="button" data-quick-mode="entry">＋<strong>Registrar entrada</strong></button>
@@ -504,6 +512,6 @@
   <section id="reportPrintArea" class="report-print-area" aria-hidden="true"></section>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="/costos.js"></script><script src="/app.js"></script>
 </body>
 </html>
