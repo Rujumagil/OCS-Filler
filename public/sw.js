@@ -1,5 +1,5 @@
-const CACHE="ocs-filler-areas-v20";
-const ASSETS=["/","/index.html","/almacen.html","/costos.js","/ventas.html","/recetario.html","/ventas-historico-2026-10.js","/ventas-graficos.js","/styles.css","/app.js","/manifest.webmanifest"];
+const CACHE="ocs-filler-areas-v21";
+const ASSETS=["/","/index.html","/almacen.html","/costos.js","/ventas.html","/recetario.html","/recetario.js","/ventas-historico-2026-10.js","/ventas-graficos.js","/styles.css","/app.js","/manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
