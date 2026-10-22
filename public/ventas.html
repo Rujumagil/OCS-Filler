@@ -10,7 +10,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),fmt=n=>Number(n||0).toLocaleString('es-MX',{maximumFractionDigits:2}),money=n=>Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2});
 const parseN=v=>typeof v==='number'?v:Number(String(v??'0').replace(/[^0-9.\-]/g,''))||0;
-let sales=[];let tickets={};try{sales=JSON.parse(localStorage.getItem('ocs_sales_rows_v1')||'[]');tickets=JSON.parse(localStorage.getItem('ocs_tickets_v1')||'{}')}catch(e){sales=[];tickets={}}
+let sales=[];let tickets={'2026-10-01':91};try{sales=JSON.parse(localStorage.getItem('ocs_sales_rows_v1')||'[]');tickets={...tickets,...JSON.parse(localStorage.getItem('ocs_tickets_v1')||'{}')}}catch(e){sales=[];tickets={'2026-10-01':91}}
 const dateISO=value=>{if(value instanceof Date&&!isNaN(value))return [value.getFullYear(),String(value.getMonth()+1).padStart(2,'0'),String(value.getDate()).padStart(2,'0')].join('-');if(typeof value==='number'&&window.XLSX){const p=XLSX.SSF.parse_date_code(value);if(p)return [p.y,String(p.m).padStart(2,'0'),String(p.d).padStart(2,'0')].join('-')}const str=String(value||'').trim();let m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');m=str.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[0]:''};
 const key=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 const pick=(r,names)=>{for(const n of names){const found=Object.keys(r).find(k=>key(k)===key(n));if(found!==undefined)return r[found]}return undefined};
