@@ -577,6 +577,31 @@ async function readJson(request) {
   try { return await request.json(); } catch { return {}; }
 }
 
+
+function salesSupabaseConfig(env) {
+  const url = String(env.SUPABASE_URL || "https://qwxydjotwhniahaovrff.supabase.co").replace(/\/$/, "");
+  const key = String(env.SUPABASE_SERVICE_ROLE_KEY || "");
+  return key ? { url, key } : null;
+}
+async function salesSupabase(env, method, path, body) {
+  const config = salesSupabaseConfig(env);
+  if(!config) throw new Error("supabase_sales_not_configured");
+  const headers = {"apikey":config.key,"Authorization":"Bearer "+config.key,"Accept":"application/json","Content-Type":"application/json"};
+  if(method==="POST") headers.Prefer="resolution=merge-duplicates,return=representation";
+  const response=await fetch(config.url+"/rest/v1/"+path,{method,headers,body:body?JSON.stringify(body):undefined});
+  if(!response.ok) { console.error("Sales DB request failed",method,response.status); throw new Error("sales_database_unavailable"); }
+  return response.status===204?[]:await response.json();
+}
+function safeSaleRow(r) {
+  if(!r || typeof r!=="object")return null;
+  const date=String(r.date||"");
+  const name=String(r.name||"").trim().slice(0,170);
+  const code=String(r.code||"").trim().slice(0,55);
+  const qty=Number(r.qty),amount=Number(r.amount);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!name||!Number.isFinite(qty)||!Number.isFinite(amount)||Math.abs(qty)>1e6||Math.abs(amount)>1e8)return null;
+  return {date,name,code,qty,amount:Math.round(amount*100)/100};
+}
+
 async function handleApi(request, env, url) {
   if (url.pathname === "/api/health") {
     return json({
@@ -646,6 +671,48 @@ async function handleApi(request, env, url) {
       return json({ok:true,answer,source:"OCS inventario autenticado + datos de ventas y recetas disponibles en el navegador",asOf:new Date().toISOString(),live:true});
     }catch(e){console.error("OCS AI query failed",String(e));return json({ok:false,error:"ai_unavailable",message:"El agente no respondió. Puedes usar los reportes directos de OCS."},502)}
     finally{clearTimeout(timeout)}
+  }
+
+
+  if(url.pathname==="/api/sales/status" && request.method==="GET"){
+    return json({ok:true,configured:Boolean(salesSupabaseConfig(env)),source:"supabase"});
+  }
+  if(url.pathname==="/api/sales/days" && request.method==="GET"){
+    if(!salesSupabaseConfig(env))return json({ok:false,error:"supabase_sales_not_configured"},503);
+    const month=String(url.searchParams.get("month")||"2026-10");
+    if(!/^\d{4}-\d{2}$/.test(month))return json({ok:false,error:"invalid_month"},400);
+    const from=month+"-01",to=month+"-31";
+    const rows=await salesSupabase(env,"GET","ocs_filler_sales_days?select=sale_date,rows,units,amount,tickets,detail_level,updated_at&sale_date=gte."+from+"&sale_date=lte."+to+"&order=sale_date.asc&limit=31");
+    return json({ok:true,days:rows,source:"supabase"});
+  }
+  if(url.pathname==="/api/sales/import" && request.method==="POST"){
+    if(!salesSupabaseConfig(env))return json({ok:false,error:"supabase_sales_not_configured"},503);
+    const body=await readJson(request);
+    const input=Array.isArray(body.days)?body.days:[];
+    if(!input.length||input.length>31)return json({ok:false,error:"invalid_sales_days"},400);
+    const file=String(body.filename||"").slice(0,140);
+    const records=[];
+    for(const d of input){
+      const date=String(d.date||"");
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Array.isArray(d.rows)||!d.rows.length||d.rows.length>2500)return json({ok:false,error:"invalid_sales_rows"},400);
+      const safe=d.rows.map(safeSaleRow);
+      if(safe.some(r=>!r||r.date!==date))return json({ok:false,error:"invalid_sales_row"},400);
+      const units=Number(safe.reduce((s,r)=>s+r.qty,0).toFixed(3));
+      const amount=Number(safe.reduce((s,r)=>s+r.amount,0).toFixed(2));
+      if(Math.abs(amount)>1e8)return json({ok:false,error:"invalid_sales_amount"},400);
+      records.push({sale_date:date,rows:safe,units,amount,detail_level:"detail",source_filename:file,updated_at:new Date().toISOString(),updated_by:session.name});
+    }
+    const result=await salesSupabase(env,"POST","ocs_filler_sales_days?on_conflict=sale_date",records);
+    return json({ok:true,updated:records.length,dates:records.map(r=>r.sale_date),amount:records.reduce((s,r)=>s+r.amount,0),source:"supabase"});
+  }
+  if(url.pathname==="/api/sales/tickets" && request.method==="POST"){
+    if(!salesSupabaseConfig(env))return json({ok:false,error:"supabase_sales_not_configured"},503);
+    const b=await readJson(request),date=String(b.date||""),tickets=Number(b.tickets);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isInteger(tickets)||tickets<0||tickets>100000)return json({ok:false,error:"invalid_tickets"},400);
+    const existing=await salesSupabase(env,"GET","ocs_filler_sales_days?select=sale_date&sale_date=eq."+date+"&limit=1");
+    if(!existing.length)return json({ok:false,error:"sales_date_missing",message:"Carga primero las ventas de esa fecha."},409);
+    await salesSupabase(env,"PATCH","ocs_filler_sales_days?sale_date=eq."+date,{tickets,updated_at:new Date().toISOString(),updated_by:session.name});
+    return json({ok:true,date,tickets});
   }
 
   if (url.pathname === "/api/inventory" && request.method === "GET") {
