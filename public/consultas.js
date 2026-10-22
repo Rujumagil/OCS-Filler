@@ -109,7 +109,8 @@ async function sendFlyQuestion(){
   const token=sessionStorage.getItem("ocs_filler_warehouse_token")||localStorage.getItem("ocs_filler_warehouse_token")||"";
   messageToChat("user",question);$("flyQuestion").value="";
   if(!token){
-    messageToChat("assistant","Para consultar el agente con existencias reales es necesario iniciar sesión en Almacén con tu usuario y PIN. Después regresa a Consultas. Mientras tanto puedes utilizar los reportes directos disponibles debajo.");
+    $("question").value=question;ask();
+    messageToChat("assistant","Preparé el reporte disponible con la información compartida. Revisa la tabla y gráfica de resultados más abajo. Para consultar existencias privadas, inicia sesión en Almacén con tu usuario y PIN.");
     return;
   }
   $("flySend").disabled=true;$("flyStatus").textContent="Consultando información OCS…";
@@ -117,7 +118,12 @@ async function sendFlyQuestion(){
     const response=await fetch("/api/assistant",{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+token},body:JSON.stringify({question,context:agentContext()})});
     const result=await response.json();
     if(!response.ok||!result.ok){
-      if(result.error==="ai_not_configured")throw Error("El servicio conversacional todavía no está activado. Falta configurar GEMINI_API_KEY como secreto del Worker OCS Filler; los reportes directos continúan disponibles.");
+      if(result.error==="ai_not_configured"){
+        $("question").value=question;ask();
+        messageToChat("assistant","Por ahora generé el reporte directo de OCS debajo del chat. Para respuestas conversacionales más abiertas todavía debe configurarse el secreto GEMINI_API_KEY del Worker.");
+        $("flyStatus").textContent="Modo de consultas directas disponible · IA conversacional pendiente de configuración.";
+        return;
+      }
       if(response.status===401)throw Error("Tu sesión de Almacén caducó. Vuelve a iniciar sesión para consultar datos protegidos.");
       throw Error(result.message||"No fue posible responder. Prueba los reportes directos.");
     }
